@@ -74,7 +74,7 @@ export default class WebGPURenderer
 
 				this.topology = webgpu_renderer.Material.ENUM.TOPOLOGY[original_struct.topology];
 
-				LOG(webgpu_renderer.device)
+				// LOG(webgpu_renderer.device, this.topology)
 
 
 
@@ -85,6 +85,8 @@ export default class WebGPURenderer
 						module: null,
 						entryPoint: 'main',
 						// record<USVString, GPUPipelineConstantValue> constants,
+
+						bufferCount: 1,
 
 						buffers:
 						[
@@ -106,7 +108,7 @@ export default class WebGPURenderer
 
 					primitive:
 					{
-						topology: webgpu_renderer.Material.ENUM.TOPOLOGY[original_struct.topology],
+						topology: this.topology,
 					},
 
 					fragment:
@@ -117,7 +119,7 @@ export default class WebGPURenderer
 						targets:
 						[
 							{
-								format: 'rgba8unorm',
+								format: 'bgra8unorm',
 							},
 						],
 					},
@@ -132,7 +134,7 @@ export default class WebGPURenderer
 
 					pipeline_configuration.vertex.module = shader_module;
 
-					LOG(code, shader_module)
+					LOG(code)
 				}
 
 
@@ -144,21 +146,13 @@ export default class WebGPURenderer
 
 					pipeline_configuration.fragment.module = shader_module;
 
-					LOG(code, shader_module)
+					LOG(code)
 				}
 
 
 
 				this.pipeline =
 					webgpu_renderer.device.createRenderPipeline(pipeline_configuration);
-
-
-
-				// this.program = gl.createProgram();
-
-				// gl.attachShader(this.program, vertex_shader);
-				// gl.attachShader(this.program, fragment_shader);
-				// gl.linkProgram(this.program);
 
 
 
@@ -270,18 +264,21 @@ export default class WebGPURenderer
 		_gpu.configure
 		({
 			device: this.device,
-			format: 'rgba8unorm',
+			format: 'bgra8unorm',
 			usage: window.GPUTextureUsage.RENDER_ATTACHMENT,
 			// GPUPredefinedColorSpace colorSpace = "srgb";
 			// GPUCanvasCompositingAlphaMode compositingAlphaMode = "opaque";
 			size: { width: 800, height: 600, depthOrArrayLayers: 1 },
+			// size: [ 800, 600 ],
 		});
 
-		LOG(_gpu.getCurrentTexture())
+		// LOG(_gpu.getCurrentTexture())
 
-		this.command_encoder = this.device.createCommandEncoder();
+		// LOG(_gpu.getPreferredFormat(this.adapter))
 
-		this.render_attachment = _gpu.getCurrentTexture();
+		// this.command_encoder = this.device.createCommandEncoder();
+
+		// this.render_attachment = _gpu.getCurrentTexture();
 		// this.device.createTexture
 		// ({
 		// 	required GPUExtent3D size;
@@ -292,16 +289,16 @@ export default class WebGPURenderer
 		// 	required GPUTextureUsageFlags usage;
 		// });
 
-		this.render_attachment_view =
-			this.render_attachment.createView
-			({
-				format: 'rgba8unorm',
-				dimension: '2d',
-				baseMipLevel: 0,
-				mipLevelCount: 1,
-				baseArrayLayer: 0,
-				arrayLayerCount: 1,
-			});
+		// this.render_attachment_view =
+		// 	this.render_attachment.createView
+		// 	({
+		// 		format: 'bgra8unorm',
+		// 		dimension: '2d',
+		// 		baseMipLevel: 0,
+		// 		mipLevelCount: 1,
+		// 		baseArrayLayer: 0,
+		// 		arrayLayerCount: 1,
+		// 	});
 
 		// LOG(this.command_encoder)
 	}
