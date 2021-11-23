@@ -91,8 +91,10 @@ export default class WebGPURenderer
 						buffers:
 						[
 							{
-								arrayStride: 0,
+								arrayStride: 12,
 								stepMode: 'vertex',
+
+								attributeCount: 1,
 
 								attributes:
 								[
@@ -108,6 +110,7 @@ export default class WebGPURenderer
 
 					primitive:
 					{
+						// frontFace: 'cw',
 						topology: this.topology,
 					},
 
@@ -115,6 +118,8 @@ export default class WebGPURenderer
 					{
 						module: null,
 						entryPoint: 'main',
+
+						targetCount: 1,
 
 						targets:
 						[
