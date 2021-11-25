@@ -290,6 +290,8 @@ export default class WebGLRenderer
 					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
 
 					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
+
+					// dedicated: wasm.SizeT(addr + UniformBlock.original_struct_offsets[3]),
 				};
 
 				this.addr = addr;
@@ -317,11 +319,9 @@ export default class WebGLRenderer
 						{
 							const uniform = new Uniform(uniform_addr);
 
-							LOG(uniform._data)
-
 							uniform.update = () =>
 							{
-								gl.bufferSubData(gl.UNIFORM_BUFFER, uniform.block_index * 4, uniform._data);
+								gl.bufferSubData(gl.UNIFORM_BUFFER, uniform.block_index, uniform._data);
 							};
 
 							buffer_length += uniform._data.length;
@@ -351,7 +351,7 @@ export default class WebGLRenderer
 
 
 
-		class Object
+		class _Object
 		{
 			constructor (addr)
 			{
@@ -369,7 +369,7 @@ export default class WebGLRenderer
 			}
 		};
 
-		this.Object = Object;
+		this.Object = _Object;
 
 
 

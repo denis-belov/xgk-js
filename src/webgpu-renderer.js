@@ -72,7 +72,7 @@ export default class WebGPURenderer
 		class Material
 		{
 			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports.material_offsets, 9);
+				wasm.SizeTv(wasm.exports.material_offsets, 10);
 
 			static ENUM =
 			{
@@ -90,7 +90,7 @@ export default class WebGPURenderer
 
 
 
-			constructor (addr, external_uniform_blocks)
+			constructor (addr)
 			{
 				const original_struct =
 				{
@@ -104,7 +104,7 @@ export default class WebGPURenderer
 
 					uniform_blocks: wasm.StdVectorAddr(addr + Material.original_struct_offsets[8]),
 
-					// dedicated_uniform_block: addr + Material.original_struct_offsets[9],
+					dedicated_uniform_block: addr + Material.original_struct_offsets[9],
 				};
 
 				this.addr = addr;
@@ -169,13 +169,6 @@ export default class WebGPURenderer
 
 
 
-				// if (original_struct.uniforms.length)
-				// {
-				// 	this.dedicated_uniform_block = new renderer.UniformBlock(original_struct.dedicated_uniform_block);
-				// }
-
-
-
 				{
 					const code = WasmWrapper.uint8Array2DomString(original_struct.wgsl_code_vertex);
 
@@ -196,8 +189,6 @@ export default class WebGPURenderer
 
 
 
-				this.uniform_blocks = [];
-
 				const bind_group_layout_descriptor =
 				{
 					entryCount: 0,
@@ -211,31 +202,30 @@ export default class WebGPURenderer
 					entries: [],
 				};
 
+				// TODO: static getInfo() instead of new
+				this.dedicated_uniform_block = new renderer.UniformBlock(original_struct.dedicated_uniform_block);
+
+				if (this.dedicated_uniform_block.entry.resource.size > 0)
+				{
+					bind_group_layout_descriptor.entries.push(this.dedicated_uniform_block.entry_layout);
+
+					++bind_group_layout_descriptor.entryCount;
+
+					QWEQWE.entries.push(this.dedicated_uniform_block.entry);
+
+					++QWEQWE.entryCount;
+				}
+				else
+				{
+					this.dedicated_uniform_block = null;
+				}
+
 				original_struct.uniform_blocks.forEach
 				(
 					(uniform_block_addr) =>
 					{
 						const uniform_block = new renderer.UniformBlock(uniform_block_addr);
 
-						if (uniform_block.name === 'Dedicated')
-						{
-							bind_group_layout_descriptor.entries.push(uniform_block.entry_layout);
-
-							++bind_group_layout_descriptor.entryCount;
-
-							QWEQWE.entries.push(uniform_block.entry);
-
-							++QWEQWE.entryCount;
-
-							this.uniform_blocks.push(uniform_block);
-						}
-					},
-				);
-
-				external_uniform_blocks.forEach
-				(
-					(uniform_block) =>
-					{
 						bind_group_layout_descriptor.entries.push(uniform_block.entry_layout);
 
 						++bind_group_layout_descriptor.entryCount;
@@ -243,8 +233,6 @@ export default class WebGPURenderer
 						QWEQWE.entries.push(uniform_block.entry);
 
 						++QWEQWE.entryCount;
-
-						// this.uniform_blocks.push(uniform_block);
 					},
 				);
 
@@ -286,16 +274,10 @@ export default class WebGPURenderer
 			{
 				Material.active_material = this;
 
-				this.uniform_blocks.forEach
-				(
-					(uniform_block) =>
-					{
-						// if (uniform_block.name === 'Dedicated')
-						// {
-						uniform_block.use();
-						// }
-					},
-				);
+				if (this.dedicated_uniform_block)
+				{
+					this.dedicated_uniform_block.use();
+				}
 
 				renderer.render_pass_encoder.setBindGroup(0, this.bind_group, []);
 
@@ -312,12 +294,23 @@ export default class WebGPURenderer
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
 
+			static instances = {};
+
 			static active_uniform_block = null;
 
 
 
 			constructor (addr)
 			{
+				if (UniformBlock.instances[addr])
+				{
+					Object.assign(this, UniformBlock.instances[addr]);
+
+					return this;
+				}
+
+
+
 				const original_struct =
 				{
 					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
@@ -332,6 +325,7 @@ export default class WebGPURenderer
 				this.binding = original_struct.binding;
 
 				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
+
 
 
 
@@ -351,7 +345,7 @@ export default class WebGPURenderer
 
 							uniform.update = () =>
 							{
-								renderer.device.queue.writeBuffer(this.buffer, uniform.block_index * 4, uniform._data, 0, uniform._data.length);
+								renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
 							};
 
 							buffer_length += uniform._data.length;
@@ -400,6 +394,8 @@ export default class WebGPURenderer
 						minBindingSize: 0,
 					},
 				};
+
+				UniformBlock.instances[addr] = this;
 			}
 
 			// collectObjects ()
@@ -414,7 +410,7 @@ export default class WebGPURenderer
 
 
 
-		class Object
+		class _Object
 		{
 			constructor (addr)
 			{
@@ -432,7 +428,7 @@ export default class WebGPURenderer
 			}
 		};
 
-		this.Object = Object;
+		this.Object = _Object;
 
 
 
