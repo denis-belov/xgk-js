@@ -9,7 +9,7 @@ export default class WebGPURenderer
 
 
 		/* eslint-disable-next-line consistent-this */
-		const webgpu_renderer = this;
+		const renderer = this;
 
 		this.materials = [];
 
@@ -33,8 +33,11 @@ export default class WebGPURenderer
 
 
 
-		this.Material = class Material
+		class Material
 		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports.material_offsets, 9);
+
 			static ENUM =
 			{
 				TOPOLOGY:
@@ -53,24 +56,22 @@ export default class WebGPURenderer
 
 			constructor (addr, bind_group_layouts)
 			{
-				const offsets = wasm.SizeTv(wasm.exports.material_offsets, 9);
-
 				const original_struct =
 				{
-					topology: wasm.SizeT(addr + offsets[0]),
+					topology: wasm.SizeT(addr + Material.original_struct_offsets[0]),
 
-					wgsl_code_vertex: wasm.StdString(addr + offsets[5]),
+					wgsl_code_vertex: wasm.StdString(addr + Material.original_struct_offsets[5]),
 
-					wgsl_code_fragment: wasm.StdString(addr + offsets[6]),
+					wgsl_code_fragment: wasm.StdString(addr + Material.original_struct_offsets[6]),
 
-					uniforms: wasm.StdVectorAddr(addr + offsets[7]),
+					uniforms: wasm.StdVectorAddr(addr + Material.original_struct_offsets[7]),
 
-					uniform_blocks: wasm.StdVectorAddr(addr + offsets[8]),
+					uniform_blocks: wasm.StdVectorAddr(addr + Material.original_struct_offsets[8]),
 				};
 
 				this.addr = addr;
 
-				this.topology = webgpu_renderer.Material.ENUM.TOPOLOGY[original_struct.topology];
+				this.topology = Material.ENUM.TOPOLOGY[original_struct.topology];
 
 
 
@@ -78,7 +79,7 @@ export default class WebGPURenderer
 				{
 					layout:
 
-						webgpu_renderer.device.createPipelineLayout
+						renderer.device.createPipelineLayout
 						({
 							bindGroupLayouts: bind_group_layouts,
 						}),
@@ -138,7 +139,7 @@ export default class WebGPURenderer
 				{
 					const code = WasmWrapper.uint8Array2DomString(original_struct.wgsl_code_vertex);
 
-					const shader_module = webgpu_renderer.device.createShaderModule({ code });
+					const shader_module = renderer.device.createShaderModule({ code });
 
 					pipeline_configuration.vertex.module = shader_module;
 
@@ -150,7 +151,7 @@ export default class WebGPURenderer
 				{
 					const code = WasmWrapper.uint8Array2DomString(original_struct.wgsl_code_fragment);
 
-					const shader_module = webgpu_renderer.device.createShaderModule({ code });
+					const shader_module = renderer.device.createShaderModule({ code });
 
 					pipeline_configuration.fragment.module = shader_module;
 
@@ -160,7 +161,7 @@ export default class WebGPURenderer
 
 
 				this.pipeline =
-					webgpu_renderer.device.createRenderPipeline(pipeline_configuration);
+					renderer.device.createRenderPipeline(pipeline_configuration);
 
 
 
@@ -173,7 +174,7 @@ export default class WebGPURenderer
 				// 		(
 				// 			(uniform_addr) =>
 				// 			{
-				// 				const uniform = new webgpu_renderer.Uniform(uniform_addr);
+				// 				const uniform = new Uniform(uniform_addr);
 
 				// 				uniform.location = gl.getUniformLocation(this.program, uniform.name);
 
@@ -199,13 +200,13 @@ export default class WebGPURenderer
 
 
 
-				// if (webgpu_renderer._context.constructor === WebGL2RenderingContext)
+				// if (renderer._context.constructor === WebGL2RenderingContext)
 				// {
 				// 	original_struct.uniform_blocks.forEach
 				// 	(
 				// 		(uniform_block_addr) =>
 				// 		{
-				// 			const uniform_block_info = webgpu_renderer.UniformBlock.getInfo(uniform_block_addr);
+				// 			const uniform_block_info = UniformBlock.getInfo(uniform_block_addr);
 
 				// 			gl.uniformBlockBinding
 				// 			(
@@ -222,18 +223,23 @@ export default class WebGPURenderer
 
 			use ()
 			{
-				// webgpu_renderer.Material.active_material = this;
+				// Material.active_material = this;
 
-				webgpu_renderer.render_pass_encoder.setPipeline(this.pipeline);
+				renderer.render_pass_encoder.setPipeline(this.pipeline);
 
 				// this.uniforms.forEach((uniform) => uniform.update());
 			}
 		};
 
+		this.Material = Material;
 
 
-		this.UniformBlock = class UniformBlock
+
+		class UniformBlock
 		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
+
 			static active_uniform_block = null;
 
 			// static getInfo (addr)
@@ -242,9 +248,9 @@ export default class WebGPURenderer
 
 			// 	const original_struct =
 			// 	{
-			// 		binding: wasm.SizeT(addr + offsets[0]),
+			// 		binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-			// 		name: wasm.StdString(addr + offsets[1]),
+			// 		name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
 			// 	};
 
 			// 	const result =
@@ -261,15 +267,15 @@ export default class WebGPURenderer
 
 			constructor (addr)
 			{
-				const offsets = wasm.SizeTv(wasm.exports.uniform_block_offsets, 3);
+				// const offsets = wasm.SizeTv(wasm.exports.uniform_block_offsets, 3);
 
 				const original_struct =
 				{
-					binding: wasm.SizeT(addr + offsets[0]),
+					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-					name: wasm.StdString(addr + offsets[1]),
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
 
-					uniforms: wasm.StdVectorAddr(addr + offsets[2]),
+					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
 				};
 
 				this.addr = addr;
@@ -295,7 +301,7 @@ export default class WebGPURenderer
 					(
 						(uniform_addr) =>
 						{
-							const uniform = new webgl_renderer.Uniform(uniform_addr);
+							const uniform = new Uniform(uniform_addr);
 
 							uniform.update = () =>
 							{
@@ -325,9 +331,11 @@ export default class WebGPURenderer
 			}
 		};
 
+		this.UniformBlock = UniformBlock;
 
 
-		this.Object = class Object
+
+		class Object
 		{
 			constructor (addr)
 			{
@@ -341,11 +349,15 @@ export default class WebGPURenderer
 
 			draw ()
 			{
-				webgpu_renderer.render_pass_encoder.draw(this.scene_vertex_data_length, 1, this.scene_vertex_data_offset, 0);
+				renderer.render_pass_encoder.draw(this.scene_vertex_data_length, 1, this.scene_vertex_data_offset, 0);
 			}
 		};
 
-		this.Scene = class Scene
+		this.Object = Object;
+
+
+
+		class Scene
 		{
 			constructor (addr)
 			{
@@ -354,6 +366,8 @@ export default class WebGPURenderer
 				this.vertex_data = wasm.StdVectorFloat(addr, 0);
 			}
 		};
+
+		this.Scene = Scene;
 	}
 
 	async init ()
@@ -361,6 +375,8 @@ export default class WebGPURenderer
 		this.adapter = await navigator.gpu.requestAdapter();
 
 		this.device = await this.adapter.requestDevice();
+
+		LOG(this.device)
 
 		const _gpu = this._context;
 

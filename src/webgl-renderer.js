@@ -9,7 +9,7 @@ export default class WebGLRenderer
 
 
 		/* eslint-disable-next-line consistent-this */
-		const webgl_renderer = this;
+		const renderer = this;
 
 		this.materials = [];
 
@@ -30,19 +30,22 @@ export default class WebGLRenderer
 
 
 
-		this.Uniform = class Uniform
+		class Uniform
 		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
+
+
+
 			constructor (addr)
 			{
-				const offsets = wasm.SizeTv(wasm.exports.uniform_offsets, 3);
-
 				const original_struct =
 				{
-					object_addr: wasm.Addr(addr + offsets[0]),
+					object_addr: wasm.Addr(addr + Uniform.original_struct_offsets[0]),
 
-					name: wasm.StdString(addr + offsets[1]),
+					name: wasm.StdString(addr + Uniform.original_struct_offsets[1]),
 
-					block_index: wasm.SizeT(addr + offsets[2]),
+					block_index: wasm.SizeT(addr + Uniform.original_struct_offsets[2]),
 				};
 
 				this.addr = addr;
@@ -55,13 +58,20 @@ export default class WebGLRenderer
 				this.block_index = original_struct.block_index;
 
 				this._data = wasm.Floatv(this.object_addr, 16);
+
+				LOG(this)
 			}
 		};
 
+		this.Uniform = Uniform;
 
 
-		this.Material = class Material
+
+		class Material
 		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports.material_offsets, 9);
+
 			static ENUM =
 			{
 				TOPOLOGY:
@@ -78,28 +88,26 @@ export default class WebGLRenderer
 
 			constructor (addr)
 			{
-				const offsets = wasm.SizeTv(wasm.exports.material_offsets, 9);
-
 				const original_struct =
 				{
-					topology: wasm.SizeT(addr + offsets[0]),
+					topology: wasm.SizeT(addr + Material.original_struct_offsets[0]),
 
-					glsl100es_code_vertex: wasm.StdString(addr + offsets[1]),
+					glsl100es_code_vertex: wasm.StdString(addr + Material.original_struct_offsets[1]),
 
-					glsl100es_code_fragment: wasm.StdString(addr + offsets[2]),
+					glsl100es_code_fragment: wasm.StdString(addr + Material.original_struct_offsets[2]),
 
-					glsl300es_code_vertex: wasm.StdString(addr + offsets[3]),
+					glsl300es_code_vertex: wasm.StdString(addr + Material.original_struct_offsets[3]),
 
-					glsl300es_code_fragment: wasm.StdString(addr + offsets[4]),
+					glsl300es_code_fragment: wasm.StdString(addr + Material.original_struct_offsets[4]),
 
-					uniforms: wasm.StdVectorAddr(addr + offsets[7]),
+					uniforms: wasm.StdVectorAddr(addr + Material.original_struct_offsets[7]),
 
-					uniform_blocks: wasm.StdVectorAddr(addr + offsets[8]),
+					uniform_blocks: wasm.StdVectorAddr(addr + Material.original_struct_offsets[8]),
 				};
 
 				this.addr = addr;
 
-				this.topology = webgl_renderer.Material.ENUM.TOPOLOGY[original_struct.topology];
+				this.topology = Material.ENUM.TOPOLOGY[original_struct.topology];
 
 
 
@@ -111,11 +119,11 @@ export default class WebGLRenderer
 				{
 					let code = null;
 
-					if (webgl_renderer._context.constructor === WebGLRenderingContext)
+					if (renderer._context.constructor === WebGLRenderingContext)
 					{
 						code = WasmWrapper.uint8Array2DomString(original_struct.glsl100es_code_vertex).trim();
 					}
-					else if (webgl_renderer._context.constructor === WebGL2RenderingContext)
+					else if (renderer._context.constructor === WebGL2RenderingContext)
 					{
 						code = WasmWrapper.uint8Array2DomString(original_struct.glsl300es_code_vertex).trim();
 					}
@@ -142,11 +150,11 @@ export default class WebGLRenderer
 				{
 					let code = null;
 
-					if (webgl_renderer._context.constructor === WebGLRenderingContext)
+					if (renderer._context.constructor === WebGLRenderingContext)
 					{
 						code = WasmWrapper.uint8Array2DomString(original_struct.glsl100es_code_fragment).trim();
 					}
-					else if (webgl_renderer._context.constructor === WebGL2RenderingContext)
+					else if (renderer._context.constructor === WebGL2RenderingContext)
 					{
 						code = WasmWrapper.uint8Array2DomString(original_struct.glsl300es_code_fragment).trim();
 					}
@@ -182,7 +190,7 @@ export default class WebGLRenderer
 						(
 							(uniform_addr) =>
 							{
-								const uniform = new webgl_renderer.Uniform(uniform_addr);
+								const uniform = new Uniform(uniform_addr);
 
 								uniform.location = gl.getUniformLocation(this.program, uniform.name);
 
@@ -208,13 +216,13 @@ export default class WebGLRenderer
 
 
 
-				if (webgl_renderer._context.constructor === WebGL2RenderingContext)
+				if (renderer._context.constructor === WebGL2RenderingContext)
 				{
 					original_struct.uniform_blocks.forEach
 					(
 						(uniform_block_addr) =>
 						{
-							const uniform_block_info = webgl_renderer.UniformBlock.getInfo(uniform_block_addr);
+							const uniform_block_info = UniformBlock.getInfo(uniform_block_addr);
 
 							gl.uniformBlockBinding
 							(
@@ -231,7 +239,7 @@ export default class WebGLRenderer
 
 			use ()
 			{
-				webgl_renderer.Material.active_material = this;
+				Material.active_material = this;
 
 				gl.useProgram(this.program);
 
@@ -239,21 +247,24 @@ export default class WebGLRenderer
 			}
 		};
 
+		this.Material = Material;
 
 
-		this.UniformBlock = class UniformBlock
+
+		class UniformBlock
 		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 3);
+
 			static active_uniform_block = null;
 
 			static getInfo (addr)
 			{
-				const offsets = wasm.SizeTv(wasm.exports.uniform_block_offsets, 2);
-
 				const original_struct =
 				{
-					binding: wasm.SizeT(addr + offsets[0]),
+					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-					name: wasm.StdString(addr + offsets[1]),
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
 				};
 
 				const result =
@@ -270,15 +281,13 @@ export default class WebGLRenderer
 
 			constructor (addr)
 			{
-				const offsets = wasm.SizeTv(wasm.exports.uniform_block_offsets, 3);
-
 				const original_struct =
 				{
-					binding: wasm.SizeT(addr + offsets[0]),
+					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-					name: wasm.StdString(addr + offsets[1]),
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
 
-					uniforms: wasm.StdVectorAddr(addr + offsets[2]),
+					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
 				};
 
 				this.addr = addr;
@@ -304,7 +313,7 @@ export default class WebGLRenderer
 					(
 						(uniform_addr) =>
 						{
-							const uniform = new webgl_renderer.Uniform(uniform_addr);
+							const uniform = new Uniform(uniform_addr);
 
 							uniform.update = () =>
 							{
@@ -334,9 +343,11 @@ export default class WebGLRenderer
 			}
 		};
 
+		this.UniformBlock = UniformBlock;
 
 
-		this.Object = class Object
+
+		class Object
 		{
 			constructor (addr)
 			{
@@ -350,11 +361,15 @@ export default class WebGLRenderer
 
 			draw ()
 			{
-				gl.drawArrays(webgl_renderer.Material.active_material.topology, this.scene_vertex_data_offset, this.scene_vertex_data_length);
+				gl.drawArrays(Material.active_material.topology, this.scene_vertex_data_offset, this.scene_vertex_data_length);
 			}
 		};
 
-		this.ObjectIndexed = class ObjectIndexed
+		this.Object = Object;
+
+
+
+		class ObjectIndexed
 		{
 			// constructor ()
 
@@ -364,9 +379,11 @@ export default class WebGLRenderer
 			}
 		};
 
+		this.ObjectIndexed = ObjectIndexed;
 
 
-		this.Scene = class Scene
+
+		class Scene
 		{
 			constructor (addr)
 			{
@@ -375,6 +392,8 @@ export default class WebGLRenderer
 				this.vertex_data = wasm.StdVectorFloat(addr, 0);
 			}
 		};
+
+		this.Scene = Scene;
 	}
 
 	// collectMaterials ()
