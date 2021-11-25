@@ -33,6 +33,42 @@ export default class WebGPURenderer
 
 
 
+		class Uniform
+		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
+
+
+
+			constructor (addr)
+			{
+				const original_struct =
+				{
+					object_addr: wasm.Addr(addr + Uniform.original_struct_offsets[0]),
+
+					// Redundant since WebGPU doesn't have single named uniform binding?
+					name: wasm.StdString(addr + Uniform.original_struct_offsets[1]),
+
+					block_index: wasm.SizeT(addr + Uniform.original_struct_offsets[2]),
+				};
+
+				this.addr = addr;
+
+				this.object_addr = original_struct.object_addr;
+
+				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
+
+				// uniform block index
+				this.block_index = original_struct.block_index;
+
+				this._data = wasm.Charv2(this.object_addr, 16 * 4);
+			}
+		};
+
+		this.Uniform = Uniform;
+
+
+
 		class Material
 		{
 			static original_struct_offsets =
@@ -54,7 +90,7 @@ export default class WebGPURenderer
 
 
 
-			constructor (addr, bind_group_layouts)
+			constructor (addr, external_uniform_blocks)
 			{
 				const original_struct =
 				{
@@ -67,6 +103,8 @@ export default class WebGPURenderer
 					uniforms: wasm.StdVectorAddr(addr + Material.original_struct_offsets[7]),
 
 					uniform_blocks: wasm.StdVectorAddr(addr + Material.original_struct_offsets[8]),
+
+					// dedicated_uniform_block: addr + Material.original_struct_offsets[9],
 				};
 
 				this.addr = addr;
@@ -77,12 +115,7 @@ export default class WebGPURenderer
 
 				const pipeline_configuration =
 				{
-					layout:
-
-						renderer.device.createPipelineLayout
-						({
-							bindGroupLayouts: bind_group_layouts,
-						}),
+					layout: null,
 
 					vertex:
 					{
@@ -136,14 +169,19 @@ export default class WebGPURenderer
 
 
 
+				// if (original_struct.uniforms.length)
+				// {
+				// 	this.dedicated_uniform_block = new renderer.UniformBlock(original_struct.dedicated_uniform_block);
+				// }
+
+
+
 				{
 					const code = WasmWrapper.uint8Array2DomString(original_struct.wgsl_code_vertex);
 
 					const shader_module = renderer.device.createShaderModule({ code });
 
 					pipeline_configuration.vertex.module = shader_module;
-
-					LOG(code)
 				}
 
 
@@ -154,80 +192,114 @@ export default class WebGPURenderer
 					const shader_module = renderer.device.createShaderModule({ code });
 
 					pipeline_configuration.fragment.module = shader_module;
-
-					LOG(code)
 				}
 
 
 
-				this.pipeline =
-					renderer.device.createRenderPipeline(pipeline_configuration);
+				this.uniform_blocks = [];
+
+				const bind_group_layout_descriptor =
+				{
+					entryCount: 0,
+					entries: [],
+				};
+
+				// rename
+				const QWEQWE =
+				{
+					entry_count: 0,
+					entries: [],
+				};
+
+				original_struct.uniform_blocks.forEach
+				(
+					(uniform_block_addr) =>
+					{
+						const uniform_block = new renderer.UniformBlock(uniform_block_addr);
+
+						if (uniform_block.name === 'Dedicated')
+						{
+							bind_group_layout_descriptor.entries.push(uniform_block.entry_layout);
+
+							++bind_group_layout_descriptor.entryCount;
+
+							QWEQWE.entries.push(uniform_block.entry);
+
+							++QWEQWE.entryCount;
+
+							this.uniform_blocks.push(uniform_block);
+						}
+					},
+				);
+
+				external_uniform_blocks.forEach
+				(
+					(uniform_block) =>
+					{
+						bind_group_layout_descriptor.entries.push(uniform_block.entry_layout);
+
+						++bind_group_layout_descriptor.entryCount;
+
+						QWEQWE.entries.push(uniform_block.entry);
+
+						++QWEQWE.entryCount;
+
+						// this.uniform_blocks.push(uniform_block);
+					},
+				);
 
 
 
-				// gl.useProgram(this.program);
+				const bind_group_layout = renderer.device.createBindGroupLayout(bind_group_layout_descriptor);
 
-				// this.uniforms =
-				// 	// TypedArray::map returns TypedArray, but need Array.
-				// 	Array.from(original_struct.uniforms)
-				// 		.map
-				// 		(
-				// 			(uniform_addr) =>
-				// 			{
-				// 				const uniform = new Uniform(uniform_addr);
+				const bind_group_descriptor =
+				{
+					layout: bind_group_layout,
 
-				// 				uniform.location = gl.getUniformLocation(this.program, uniform.name);
+					...QWEQWE,
+				};
 
-				// 				// Check if shader uses uniform then push uniform to this.uniforms.
-				// 				if (uniform.location)
-				// 				{
-				// 					uniform.update = () =>
-				// 					{
-				// 						gl.uniformMatrix4fv(uniform.location, false, uniform._data);
-				// 					};
+				this.bind_group =
+					renderer.device.createBindGroup(bind_group_descriptor);
 
-				// 					uniform.update();
+				const pipeline_layout_descriptor =
+				{
+					bindGroupLayouts:
+					[
+						bind_group_layout,
+					],
+				};
 
-				// 					return uniform;
-				// 				}
-
-				// 				return null;
-				// 			},
-				// 		)
-				// 		.filter((uniform) => uniform);
-
-				// gl.useProgram(null);
+				pipeline_configuration.layout =
+					renderer.device.createPipelineLayout(pipeline_layout_descriptor);
 
 
 
-				// if (renderer._context.constructor === WebGL2RenderingContext)
-				// {
-				// 	original_struct.uniform_blocks.forEach
-				// 	(
-				// 		(uniform_block_addr) =>
-				// 		{
-				// 			const uniform_block_info = UniformBlock.getInfo(uniform_block_addr);
+				this.pipeline = renderer.device.createRenderPipeline(pipeline_configuration);
 
-				// 			gl.uniformBlockBinding
-				// 			(
-				// 				this.program,
-				// 				gl.getUniformBlockIndex(this.program, uniform_block_info.name),
-				// 				uniform_block_info.binding,
-				// 			);
-				// 		},
-				// 	);
-				// }
+				LOG(this)
 			}
 
 			// collectObjects ()
 
 			use ()
 			{
-				// Material.active_material = this;
+				Material.active_material = this;
+
+				this.uniform_blocks.forEach
+				(
+					(uniform_block) =>
+					{
+						// if (uniform_block.name === 'Dedicated')
+						// {
+						uniform_block.use();
+						// }
+					},
+				);
+
+				renderer.render_pass_encoder.setBindGroup(0, this.bind_group, []);
 
 				renderer.render_pass_encoder.setPipeline(this.pipeline);
-
-				// this.uniforms.forEach((uniform) => uniform.update());
 			}
 		};
 
@@ -242,33 +314,10 @@ export default class WebGPURenderer
 
 			static active_uniform_block = null;
 
-			// static getInfo (addr)
-			// {
-			// 	const offsets = wasm.SizeTv(wasm.exports.uniform_block_offsets, 2);
-
-			// 	const original_struct =
-			// 	{
-			// 		binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
-
-			// 		name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
-			// 	};
-
-			// 	const result =
-			// 	{
-			// 		binding: original_struct.binding,
-
-			// 		name: WasmWrapper.uint8Array2DomString(original_struct.name),
-			// 	};
-
-			// 	return result;
-			// }
-
 
 
 			constructor (addr)
 			{
-				// const offsets = wasm.SizeTv(wasm.exports.uniform_block_offsets, 3);
-
 				const original_struct =
 				{
 					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
@@ -286,12 +335,9 @@ export default class WebGPURenderer
 
 
 
-				this.buffer = gl.createBuffer();
+				this.buffer = null;
 
 
-
-				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
-				gl.bindBufferBase(gl.UNIFORM_BUFFER, this.binding, this.buffer);
 
 				let buffer_length = 0;
 
@@ -305,7 +351,7 @@ export default class WebGPURenderer
 
 							uniform.update = () =>
 							{
-								gl.bufferSubData(gl.UNIFORM_BUFFER, uniform.block_index * 4, uniform._data);
+								renderer.device.queue.writeBuffer(this.buffer, uniform.block_index * 4, uniform._data, 0, uniform._data.length);
 							};
 
 							buffer_length += uniform._data.length;
@@ -314,20 +360,53 @@ export default class WebGPURenderer
 						},
 					);
 
-				gl.bufferData(gl.UNIFORM_BUFFER, buffer_length * 4, gl.DYNAMIC_DRAW);
+				this.buffer =
+					renderer.device.createBuffer
+					({
+						size: buffer_length,
+
+						usage:
+						(
+							window.GPUBufferUsage.COPY_DST |
+							window.GPUBufferUsage.UNIFORM
+						),
+					});
 
 				this.uniforms.forEach((uniform) => uniform.update());
 
-				gl.bindBuffer(gl.UNIFORM_BUFFER, null);
+				this.entry =
+				{
+					binding: this.binding,
+
+					resource:
+					{
+						buffer: this.buffer,
+						offset: 0,
+						size: buffer_length,
+					},
+				};
+
+				this.entry_layout =
+				{
+					binding: this.binding,
+
+					// !
+					visibility: window.GPUShaderStage.VERTEX,
+
+					buffer:
+					{
+						type: 'uniform',
+						hasDynamicOffset: false,
+						minBindingSize: 0,
+					},
+				};
 			}
 
 			// collectObjects ()
 
 			use ()
 			{
-				// gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
-
-				// this.uniforms.forEach((uniform) => uniform.update());
+				this.uniforms.forEach((uniform) => uniform.update());
 			}
 		};
 
@@ -378,9 +457,7 @@ export default class WebGPURenderer
 
 		LOG(this.device)
 
-		const _gpu = this._context;
-
-		_gpu.configure
+		this._context.configure
 		({
 			device: this.device,
 			format: 'bgra8unorm',

@@ -57,9 +57,11 @@ export default class WebGLRenderer
 				// uniform block index
 				this.block_index = original_struct.block_index;
 
-				this._data = wasm.Floatv(this.object_addr, 16);
+				this._data = wasm.Charv2(this.object_addr, 16 * 4);
 
-				LOG(this)
+				// LOG(wasm.Charv(this.object_addr, 16 * 4), wasm.Floatv(this.object_addr, 16))
+
+				// LOG(this)
 			}
 		};
 
@@ -300,10 +302,10 @@ export default class WebGLRenderer
 
 				this.buffer = gl.createBuffer();
 
-
-
 				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
 				gl.bindBufferBase(gl.UNIFORM_BUFFER, this.binding, this.buffer);
+
+
 
 				let buffer_length = 0;
 
@@ -314,6 +316,8 @@ export default class WebGLRenderer
 						(uniform_addr) =>
 						{
 							const uniform = new Uniform(uniform_addr);
+
+							LOG(uniform._data)
 
 							uniform.update = () =>
 							{
@@ -326,7 +330,7 @@ export default class WebGLRenderer
 						},
 					);
 
-				gl.bufferData(gl.UNIFORM_BUFFER, buffer_length * 4, gl.DYNAMIC_DRAW);
+				gl.bufferData(gl.UNIFORM_BUFFER, buffer_length, gl.DYNAMIC_DRAW);
 
 				this.uniforms.forEach((uniform) => uniform.update());
 
