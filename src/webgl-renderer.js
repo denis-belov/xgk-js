@@ -33,7 +33,7 @@ export default class WebGLRenderer
 		class Uniform
 		{
 			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
+				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 4);
 
 
 
@@ -46,6 +46,8 @@ export default class WebGLRenderer
 					name: wasm.StdString(addr + Uniform.original_struct_offsets[1]),
 
 					block_index: wasm.SizeT(addr + Uniform.original_struct_offsets[2]),
+
+					size: wasm.SizeT(addr + Uniform.original_struct_offsets[3]),
 				};
 
 				this.addr = addr;
@@ -57,11 +59,9 @@ export default class WebGLRenderer
 				// uniform block index
 				this.block_index = original_struct.block_index;
 
-				this._data = wasm.Charv2(this.object_addr, 16 * 4);
+				this.size = original_struct.size;
 
-				// LOG(wasm.Charv(this.object_addr, 16 * 4), wasm.Floatv(this.object_addr, 16))
-
-				// LOG(this)
+				this._data = wasm.Charv2(this.object_addr, this.size);
 			}
 		};
 

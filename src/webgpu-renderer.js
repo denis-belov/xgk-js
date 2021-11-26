@@ -36,7 +36,7 @@ export default class WebGPURenderer
 		class Uniform
 		{
 			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
+				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 4);
 
 
 
@@ -49,7 +49,10 @@ export default class WebGPURenderer
 					// Redundant since WebGPU doesn't have single named uniform binding?
 					name: wasm.StdString(addr + Uniform.original_struct_offsets[1]),
 
+					// TODO: rename to offset
 					block_index: wasm.SizeT(addr + Uniform.original_struct_offsets[2]),
+
+					size: wasm.SizeT(addr + Uniform.original_struct_offsets[3]),
 				};
 
 				this.addr = addr;
@@ -61,7 +64,9 @@ export default class WebGPURenderer
 				// uniform block index
 				this.block_index = original_struct.block_index;
 
-				this._data = wasm.Charv2(this.object_addr, 16 * 4);
+				this.size = original_struct.size;
+
+				this._data = wasm.Charv2(this.object_addr, this.size);
 			}
 		};
 
@@ -195,29 +200,34 @@ export default class WebGPURenderer
 					entries: [],
 				};
 
-				// rename
-				const QWEQWE =
+				const bind_group_descriptor =
 				{
+					layout: null,
+
 					entry_count: 0,
 					entries: [],
 				};
 
-				// TODO: static getInfo() instead of new
-				this.dedicated_uniform_block = new renderer.UniformBlock(original_struct.dedicated_uniform_block);
+				this.dedicated_uniform_block = null;
 
-				if (this.dedicated_uniform_block.entry.resource.size > 0)
+				if
+				(
+					wasm.exports.getStdVectorSizeAddr
+					(
+						original_struct.dedicated_uniform_block +
+						UniformBlock.original_struct_offsets[2]
+					) > 0
+				)
 				{
+					this.dedicated_uniform_block = new renderer.UniformBlock(original_struct.dedicated_uniform_block);
+
 					bind_group_layout_descriptor.entries.push(this.dedicated_uniform_block.entry_layout);
 
 					++bind_group_layout_descriptor.entryCount;
 
-					QWEQWE.entries.push(this.dedicated_uniform_block.entry);
+					bind_group_descriptor.entries.push(this.dedicated_uniform_block.entry);
 
-					++QWEQWE.entryCount;
-				}
-				else
-				{
-					this.dedicated_uniform_block = null;
+					++bind_group_descriptor.entryCount;
 				}
 
 				original_struct.uniform_blocks.forEach
@@ -230,9 +240,9 @@ export default class WebGPURenderer
 
 						++bind_group_layout_descriptor.entryCount;
 
-						QWEQWE.entries.push(uniform_block.entry);
+						bind_group_descriptor.entries.push(uniform_block.entry);
 
-						++QWEQWE.entryCount;
+						++bind_group_descriptor.entryCount;
 					},
 				);
 
@@ -240,12 +250,7 @@ export default class WebGPURenderer
 
 				const bind_group_layout = renderer.device.createBindGroupLayout(bind_group_layout_descriptor);
 
-				const bind_group_descriptor =
-				{
-					layout: bind_group_layout,
-
-					...QWEQWE,
-				};
+				bind_group_descriptor.layout = bind_group_layout;
 
 				this.bind_group =
 					renderer.device.createBindGroup(bind_group_descriptor);
