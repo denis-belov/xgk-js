@@ -79,6 +79,11 @@ export default class WebGPURenderer
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports.material_offsets, 10);
 
+			static original_instances =
+				wasm.StdVectorAddr(wasm.exports._ZN8Material9instancesE);
+
+			static instances = null;
+
 			static ENUM =
 			{
 				TOPOLOGY:
@@ -92,6 +97,11 @@ export default class WebGPURenderer
 			};
 
 			static active_material = null;
+
+			static getInstance (addr)
+			{
+				return Material.instances[addr];
+			}
 
 
 
@@ -208,19 +218,10 @@ export default class WebGPURenderer
 					entries: [],
 				};
 
-				this.dedicated_uniform_block = null;
+				this.dedicated_uniform_block = renderer.UniformBlock.getInstance(original_struct.dedicated_uniform_block);
 
-				if
-				(
-					wasm.exports.getStdVectorSizeAddr
-					(
-						original_struct.dedicated_uniform_block +
-						UniformBlock.original_struct_offsets[2]
-					) > 0
-				)
+				if (this.dedicated_uniform_block.uniforms.length > 0)
 				{
-					this.dedicated_uniform_block = new renderer.UniformBlock(original_struct.dedicated_uniform_block);
-
 					bind_group_layout_descriptor.entries.push(this.dedicated_uniform_block.entry_layout);
 
 					++bind_group_layout_descriptor.entryCount;
@@ -230,11 +231,31 @@ export default class WebGPURenderer
 					++bind_group_descriptor.entryCount;
 				}
 
+				// if
+				// (
+				// 	wasm.exports.getStdVectorSizeAddr
+				// 	(
+				// 		original_struct.dedicated_uniform_block +
+				// 		UniformBlock.original_struct_offsets[2]
+				// 	) > 0
+				// )
+				// {
+				// 	this.dedicated_uniform_block = renderer.UniformBlock.getInstance(original_struct.dedicated_uniform_block);
+
+				// 	bind_group_layout_descriptor.entries.push(this.dedicated_uniform_block.entry_layout);
+
+				// 	++bind_group_layout_descriptor.entryCount;
+
+				// 	bind_group_descriptor.entries.push(this.dedicated_uniform_block.entry);
+
+				// 	++bind_group_descriptor.entryCount;
+				// }
+
 				original_struct.uniform_blocks.forEach
 				(
 					(uniform_block_addr) =>
 					{
-						const uniform_block = new renderer.UniformBlock(uniform_block_addr);
+						const uniform_block = renderer.UniformBlock.getInstance(uniform_block_addr);
 
 						bind_group_layout_descriptor.entries.push(uniform_block.entry_layout);
 
@@ -269,8 +290,6 @@ export default class WebGPURenderer
 
 
 				this.pipeline = renderer.device.createRenderPipeline(pipeline_configuration);
-
-				LOG(this)
 			}
 
 			// collectObjects ()
@@ -279,10 +298,10 @@ export default class WebGPURenderer
 			{
 				Material.active_material = this;
 
-				if (this.dedicated_uniform_block)
-				{
-					this.dedicated_uniform_block.use();
-				}
+				// if (this.dedicated_uniform_block)
+				// {
+				this.dedicated_uniform_block.use();
+				// }
 
 				renderer.render_pass_encoder.setBindGroup(0, this.bind_group, []);
 
@@ -299,23 +318,22 @@ export default class WebGPURenderer
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
 
-			static instances = {};
+			static original_instances =
+				wasm.StdVectorAddr(wasm.exports._ZN3XGK3API12UniformBlock9instancesE);
+
+			static instances = null;
 
 			static active_uniform_block = null;
+
+			static getInstance (addr)
+			{
+				return UniformBlock.instances[addr];
+			}
 
 
 
 			constructor (addr)
 			{
-				if (UniformBlock.instances[addr])
-				{
-					Object.assign(this, UniformBlock.instances[addr]);
-
-					return this;
-				}
-
-
-
 				const original_struct =
 				{
 					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
@@ -399,8 +417,6 @@ export default class WebGPURenderer
 						minBindingSize: 0,
 					},
 				};
-
-				UniformBlock.instances[addr] = this;
 			}
 
 			// collectObjects ()
@@ -456,7 +472,32 @@ export default class WebGPURenderer
 
 		this.device = await this.adapter.requestDevice();
 
-		LOG(this.device)
+		LOG(this.device);
+
+		[
+			this.UniformBlock,
+			this.Material,
+		]
+			.forEach
+			(
+				(constr) =>
+				{
+					constr.instances =
+						constr.original_instances.reduce
+							(
+								(instances, instance_addr) =>
+									Object.defineProperty
+									(
+										instances,
+										instance_addr,
+
+										{ value: new constr(instance_addr) },
+									),
+
+								{},
+							);
+				},
+			);
 
 		this._context.configure
 		({
