@@ -1,3 +1,7 @@
+import Base from './base';
+
+
+
 export default class WebGPURenderer
 {
 	// dpr
@@ -33,7 +37,7 @@ export default class WebGPURenderer
 
 
 
-		class Uniform
+		class Uniform extends Base
 		{
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 4);
@@ -42,6 +46,8 @@ export default class WebGPURenderer
 
 			constructor (addr)
 			{
+				super(addr);
+
 				const original_struct =
 				{
 					object_addr: wasm.Addr(addr + Uniform.original_struct_offsets[0]),
@@ -74,7 +80,125 @@ export default class WebGPURenderer
 
 
 
-		class Material
+		class UniformBlock extends Base
+		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
+
+			static original_instances =
+				wasm.StdVectorAddr(wasm.exports._ZN3XGK3API12UniformBlock9instancesE);
+
+			static used_instance = null;
+
+
+
+			constructor (addr)
+			{
+				super(addr);
+
+				const original_struct =
+				{
+					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
+
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
+
+					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
+				};
+
+				this.addr = addr;
+
+				this.binding = original_struct.binding;
+
+				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
+
+
+
+
+				this.buffer = null;
+
+
+
+				let buffer_length = 0;
+
+				this.uniforms =
+					// TypedArray::map returns TypedArray, but need Array.
+					Array.from(original_struct.uniforms).map
+					(
+						(uniform_addr) =>
+						{
+							const uniform = Uniform.getInstance(uniform_addr);
+
+							buffer_length += uniform._data.length;
+
+							return uniform;
+						},
+					);
+
+				this.buffer =
+					renderer.device.createBuffer
+					({
+						size: buffer_length,
+
+						usage:
+						(
+							window.GPUBufferUsage.COPY_DST |
+							window.GPUBufferUsage.UNIFORM
+						),
+					});
+
+				this.entry =
+				{
+					binding: this.binding,
+
+					resource:
+					{
+						buffer: this.buffer,
+						offset: 0,
+						size: buffer_length,
+					},
+				};
+
+				this.entry_layout =
+				{
+					binding: this.binding,
+
+					// !
+					visibility: window.GPUShaderStage.VERTEX,
+
+					buffer:
+					{
+						type: 'uniform',
+						hasDynamicOffset: false,
+						minBindingSize: 0,
+					},
+				};
+
+				this.use();
+			}
+
+			// collectObjects ()
+
+			use ()
+			{
+				for
+				(
+					let uniform_index = 0;
+					uniform_index < this.uniforms.length;
+					++uniform_index
+				)
+				{
+					const uniform = this.uniforms[uniform_index];
+
+					renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
+				}
+			}
+		};
+
+		this.UniformBlock = UniformBlock;
+
+
+
+		class Material extends Base
 		{
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports.material_offsets, 10);
@@ -82,7 +206,7 @@ export default class WebGPURenderer
 			static original_instances =
 				wasm.StdVectorAddr(wasm.exports._ZN8Material9instancesE);
 
-			static instances = null;
+			// static instances = null;
 
 			static ENUM =
 			{
@@ -96,36 +220,14 @@ export default class WebGPURenderer
 				],
 			};
 
-			static active_material = null;
-
-			static getInstance (addr)
-			{
-				// return Material.instances?.[addr] || new Material(addr);
-
-				if (!Material.instances)
-				{
-					Material.instances = {};
-				}
-
-				if (!Material.instances[addr])
-				{
-					Object.defineProperty
-					(
-						Material.instances,
-
-						addr,
-
-						{ value: new Material(addr) },
-					)
-				}
-
-				return Material.instances[addr];
-			}
+			static used_instance = null;
 
 
 
 			constructor (addr)
 			{
+				super(addr);
+
 				const original_struct =
 				{
 					topology: wasm.SizeT(addr + Material.original_struct_offsets[0]),
@@ -250,26 +352,6 @@ export default class WebGPURenderer
 					++bind_group_descriptor.entryCount;
 				}
 
-				// if
-				// (
-				// 	wasm.exports.getStdVectorSizeAddr
-				// 	(
-				// 		original_struct.dedicated_uniform_block +
-				// 		UniformBlock.original_struct_offsets[2]
-				// 	) > 0
-				// )
-				// {
-				// 	this.dedicated_uniform_block = renderer.UniformBlock.getInstance(original_struct.dedicated_uniform_block);
-
-				// 	bind_group_layout_descriptor.entries.push(this.dedicated_uniform_block.entry_layout);
-
-				// 	++bind_group_layout_descriptor.entryCount;
-
-				// 	bind_group_descriptor.entries.push(this.dedicated_uniform_block.entry);
-
-				// 	++bind_group_descriptor.entryCount;
-				// }
-
 				original_struct.uniform_blocks.forEach
 				(
 					(uniform_block_addr) =>
@@ -315,7 +397,7 @@ export default class WebGPURenderer
 
 			use ()
 			{
-				Material.active_material = this;
+				Material.used_instance = this;
 
 				// if (this.dedicated_uniform_block)
 				// {
@@ -332,149 +414,12 @@ export default class WebGPURenderer
 
 
 
-		class UniformBlock
-		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
-
-			static original_instances =
-				wasm.StdVectorAddr(wasm.exports._ZN3XGK3API12UniformBlock9instancesE);
-
-			static instances = null;
-
-			static active_uniform_block = null;
-
-			static getInstance (addr)
-			{
-				// return UniformBlock.instances?.[addr] || new UniformBlock(addr);
-
-				if (!UniformBlock.instances)
-				{
-					UniformBlock.instances = {};
-				}
-
-				if (!UniformBlock.instances[addr])
-				{
-					Object.defineProperty
-					(
-						UniformBlock.instances,
-
-						addr,
-
-						{ value: new UniformBlock(addr) },
-					)
-				}
-
-				return UniformBlock.instances[addr];
-			}
-
-
-
-			constructor (addr)
-			{
-				const original_struct =
-				{
-					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
-
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
-
-					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
-				};
-
-				this.addr = addr;
-
-				this.binding = original_struct.binding;
-
-				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
-
-
-
-
-				this.buffer = null;
-
-
-
-				let buffer_length = 0;
-
-				this.uniforms =
-					// TypedArray::map returns TypedArray, but need Array.
-					Array.from(original_struct.uniforms).map
-					(
-						(uniform_addr) =>
-						{
-							const uniform = new Uniform(uniform_addr);
-
-							// uniform.update = () =>
-							// {
-							// 	renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
-							// };
-
-							buffer_length += uniform._data.length;
-
-							return uniform;
-						},
-					);
-
-				this.buffer =
-					renderer.device.createBuffer
-					({
-						size: buffer_length,
-
-						usage:
-						(
-							window.GPUBufferUsage.COPY_DST |
-							window.GPUBufferUsage.UNIFORM
-						),
-					});
-
-				this.uniforms.forEach
-				((uniform) => renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length));
-
-				this.entry =
-				{
-					binding: this.binding,
-
-					resource:
-					{
-						buffer: this.buffer,
-						offset: 0,
-						size: buffer_length,
-					},
-				};
-
-				this.entry_layout =
-				{
-					binding: this.binding,
-
-					// !
-					visibility: window.GPUShaderStage.VERTEX,
-
-					buffer:
-					{
-						type: 'uniform',
-						hasDynamicOffset: false,
-						minBindingSize: 0,
-					},
-				};
-			}
-
-			// collectObjects ()
-
-			use ()
-			{
-				this.uniforms.forEach
-				((uniform) => renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length));
-			}
-		};
-
-		this.UniformBlock = UniformBlock;
-
-
-
-		class _Object
+		class _Object extends Base
 		{
 			constructor (addr)
 			{
+				super(addr);
+
 				this.addr = addr;
 
 				this.scene_vertex_data_offset = wasm.SizeT(addr, 0) / 3;
@@ -493,10 +438,12 @@ export default class WebGPURenderer
 
 
 
-		class Scene
+		class Scene extends Base
 		{
 			constructor (addr)
 			{
+				super(addr);
+
 				this.addr = addr;
 
 				this.vertex_data = wasm.StdVectorFloat(addr, 0);

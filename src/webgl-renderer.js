@@ -1,3 +1,7 @@
+import Base from './base';
+
+
+
 export default class WebGLRenderer
 {
 	// dpr
@@ -30,7 +34,7 @@ export default class WebGLRenderer
 
 
 
-		class Uniform
+		class Uniform extends Base
 		{
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 4);
@@ -39,6 +43,8 @@ export default class WebGLRenderer
 
 			constructor (addr)
 			{
+				super(addr);
+
 				const original_struct =
 				{
 					object_addr: wasm.Addr(addr + Uniform.original_struct_offsets[0]),
@@ -62,6 +68,11 @@ export default class WebGLRenderer
 				this.size = original_struct.size;
 
 				this._data = wasm.Charv2(this.object_addr, this.size);
+
+				// For updating WebGL single named uniforms.
+				// if (this.type)
+				this.typed_data = wasm.Floatv(this.object_addr, this.size / 4);
+				LOG(this.size / 4, this.typed_data)
 			}
 		};
 
@@ -69,7 +80,113 @@ export default class WebGLRenderer
 
 
 
-		class Material
+		class UniformBlock extends Base
+		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 3);
+
+			static used_instance = null;
+
+			static getInfo (addr)
+			{
+				const original_struct =
+				{
+					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
+
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
+				};
+
+				const result =
+				{
+					binding: original_struct.binding,
+
+					name: WasmWrapper.uint8Array2DomString(original_struct.name),
+				};
+
+				return result;
+			}
+
+
+
+			constructor (addr)
+			{
+				super(addr);
+
+				const original_struct =
+				{
+					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
+
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
+
+					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
+
+					// dedicated: wasm.SizeT(addr + UniformBlock.original_struct_offsets[3]),
+				};
+
+				this.addr = addr;
+
+				this.binding = original_struct.binding;
+
+				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
+
+
+
+				this.buffer = gl.createBuffer();
+
+				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
+				gl.bindBufferBase(gl.UNIFORM_BUFFER, this.binding, this.buffer);
+
+
+
+				let buffer_length = 0;
+
+				this.uniforms =
+					// TypedArray::map returns TypedArray, but need Array.
+					Array.from(original_struct.uniforms).map
+					(
+						(uniform_addr) =>
+						{
+							const uniform = Uniform.getInstance(uniform_addr);
+
+							buffer_length += uniform._data.length;
+
+							return uniform;
+						},
+					);
+
+				gl.bufferData(gl.UNIFORM_BUFFER, buffer_length, gl.DYNAMIC_DRAW);
+
+				// Initially update uniforms.
+				this.use();
+
+				gl.bindBuffer(gl.UNIFORM_BUFFER, null);
+			}
+
+			// collectObjects ()
+
+			use ()
+			{
+				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
+
+				for
+				(
+					let uniform_index = 0;
+					uniform_index < this.uniforms.length;
+					++uniform_index
+				)
+				{
+					const uniform = this.uniforms[uniform_index];
+
+					gl.bufferSubData(gl.UNIFORM_BUFFER, uniform.block_index, uniform._data);
+				}
+			}
+		};
+
+		this.UniformBlock = UniformBlock;
+
+
+
+		class Material extends Base
 		{
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports.material_offsets, 9);
@@ -84,12 +201,14 @@ export default class WebGLRenderer
 				],
 			};
 
-			static active_material = null;
+			static used_instance = null;
 
 
 
 			constructor (addr)
 			{
+				super(addr);
+
 				const original_struct =
 				{
 					topology: wasm.SizeT(addr + Material.original_struct_offsets[0]),
@@ -199,14 +318,12 @@ export default class WebGLRenderer
 								// Check if shader uses uniform then push uniform to this.uniforms.
 								if (uniform.location)
 								{
-									// uniform.update = () =>
-									// {
-									// 	gl.uniformMatrix4fv(uniform.location, false, uniform._data);
-									// };
+									uniform.update = () =>
+									{
+										gl.uniformMatrix4fv(uniform.location, false, uniform.typed_data);
+									};
 
-									// uniform.update();
-
-									gl.uniformMatrix4fv(uniform.location, false, uniform._data)
+									uniform.update();
 
 									return uniform;
 								}
@@ -226,7 +343,7 @@ export default class WebGLRenderer
 					(
 						(uniform_block_addr) =>
 						{
-							const uniform_block_info = UniformBlock.getInfo(uniform_block_addr);
+							const uniform_block_info = UniformBlock.getInstance(uniform_block_addr);
 
 							gl.uniformBlockBinding
 							(
@@ -243,12 +360,11 @@ export default class WebGLRenderer
 
 			use ()
 			{
-				Material.active_material = this;
+				Material.used_instance = this;
 
 				gl.useProgram(this.program);
 
-				this.uniforms.forEach
-				((uniform) => gl.uniformMatrix4fv(uniform.location, false, uniform._data));
+				this.uniforms.forEach((uniform) => uniform.update());
 			}
 		};
 
@@ -256,108 +372,12 @@ export default class WebGLRenderer
 
 
 
-		class UniformBlock
-		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 3);
-
-			static active_uniform_block = null;
-
-			static getInfo (addr)
-			{
-				const original_struct =
-				{
-					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
-
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
-				};
-
-				const result =
-				{
-					binding: original_struct.binding,
-
-					name: WasmWrapper.uint8Array2DomString(original_struct.name),
-				};
-
-				return result;
-			}
-
-
-
-			constructor (addr)
-			{
-				const original_struct =
-				{
-					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
-
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
-
-					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
-
-					// dedicated: wasm.SizeT(addr + UniformBlock.original_struct_offsets[3]),
-				};
-
-				this.addr = addr;
-
-				this.binding = original_struct.binding;
-
-				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
-
-
-
-				this.buffer = gl.createBuffer();
-
-				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
-				gl.bindBufferBase(gl.UNIFORM_BUFFER, this.binding, this.buffer);
-
-
-
-				let buffer_length = 0;
-
-				this.uniforms =
-					// TypedArray::map returns TypedArray, but need Array.
-					Array.from(original_struct.uniforms).map
-					(
-						(uniform_addr) =>
-						{
-							const uniform = new Uniform(uniform_addr);
-
-							uniform.update = () =>
-							{
-								gl.bufferSubData(gl.UNIFORM_BUFFER, uniform.block_index, uniform._data);
-							};
-
-							buffer_length += uniform._data.length;
-
-							return uniform;
-						},
-					);
-
-				gl.bufferData(gl.UNIFORM_BUFFER, buffer_length, gl.DYNAMIC_DRAW);
-
-				this.uniforms.forEach((uniform) => uniform.update());
-
-				gl.bindBuffer(gl.UNIFORM_BUFFER, null);
-			}
-
-			// collectObjects ()
-
-			use ()
-			{
-				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
-
-				this.uniforms.forEach((uniform) => uniform.update());
-			}
-		};
-
-		this.UniformBlock = UniformBlock;
-
-
-
-		class _Object
+		class _Object extends Base
 		{
 			constructor (addr)
 			{
+				super(addr);
+
 				this.addr = addr;
 
 				this.scene_vertex_data_offset = wasm.SizeT(addr, 0) / 3;
@@ -368,7 +388,7 @@ export default class WebGLRenderer
 
 			draw ()
 			{
-				gl.drawArrays(Material.active_material.topology, this.scene_vertex_data_offset, this.scene_vertex_data_length);
+				gl.drawArrays(Material.used_instance.topology, this.scene_vertex_data_offset, this.scene_vertex_data_length);
 			}
 		};
 
@@ -376,9 +396,12 @@ export default class WebGLRenderer
 
 
 
-		class ObjectIndexed
+		class ObjectIndexed extends Base
 		{
-			// constructor ()
+			constructor (addr)
+			{
+				super(addr);
+			}
 
 			draw (renderer)
 			{
@@ -390,10 +413,12 @@ export default class WebGLRenderer
 
 
 
-		class Scene
+		class Scene extends Base
 		{
 			constructor (addr)
 			{
+				super(addr);
+
 				this.addr = addr;
 
 				this.vertex_data = wasm.StdVectorFloat(addr, 0);
