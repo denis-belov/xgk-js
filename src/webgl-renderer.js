@@ -199,12 +199,14 @@ export default class WebGLRenderer
 								// Check if shader uses uniform then push uniform to this.uniforms.
 								if (uniform.location)
 								{
-									uniform.update = () =>
-									{
-										gl.uniformMatrix4fv(uniform.location, false, uniform._data);
-									};
+									// uniform.update = () =>
+									// {
+									// 	gl.uniformMatrix4fv(uniform.location, false, uniform._data);
+									// };
 
-									uniform.update();
+									// uniform.update();
+
+									gl.uniformMatrix4fv(uniform.location, false, uniform._data)
 
 									return uniform;
 								}
@@ -245,7 +247,8 @@ export default class WebGLRenderer
 
 				gl.useProgram(this.program);
 
-				this.uniforms.forEach((uniform) => uniform.update());
+				this.uniforms.forEach
+				((uniform) => gl.uniformMatrix4fv(uniform.location, false, uniform._data));
 			}
 		};
 

@@ -100,6 +100,25 @@ export default class WebGPURenderer
 
 			static getInstance (addr)
 			{
+				// return Material.instances?.[addr] || new Material(addr);
+
+				if (!Material.instances)
+				{
+					Material.instances = {};
+				}
+
+				if (!Material.instances[addr])
+				{
+					Object.defineProperty
+					(
+						Material.instances,
+
+						addr,
+
+						{ value: new Material(addr) },
+					)
+				}
+
 				return Material.instances[addr];
 			}
 
@@ -327,6 +346,25 @@ export default class WebGPURenderer
 
 			static getInstance (addr)
 			{
+				// return UniformBlock.instances?.[addr] || new UniformBlock(addr);
+
+				if (!UniformBlock.instances)
+				{
+					UniformBlock.instances = {};
+				}
+
+				if (!UniformBlock.instances[addr])
+				{
+					Object.defineProperty
+					(
+						UniformBlock.instances,
+
+						addr,
+
+						{ value: new UniformBlock(addr) },
+					)
+				}
+
 				return UniformBlock.instances[addr];
 			}
 
@@ -366,10 +404,10 @@ export default class WebGPURenderer
 						{
 							const uniform = new Uniform(uniform_addr);
 
-							uniform.update = () =>
-							{
-								renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
-							};
+							// uniform.update = () =>
+							// {
+							// 	renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
+							// };
 
 							buffer_length += uniform._data.length;
 
@@ -389,7 +427,8 @@ export default class WebGPURenderer
 						),
 					});
 
-				this.uniforms.forEach((uniform) => uniform.update());
+				this.uniforms.forEach
+				((uniform) => renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length));
 
 				this.entry =
 				{
@@ -423,7 +462,8 @@ export default class WebGPURenderer
 
 			use ()
 			{
-				this.uniforms.forEach((uniform) => uniform.update());
+				this.uniforms.forEach
+				((uniform) => renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length));
 			}
 		};
 
@@ -474,30 +514,19 @@ export default class WebGPURenderer
 
 		LOG(this.device);
 
-		[
-			this.UniformBlock,
-			this.Material,
-		]
-			.forEach
-			(
-				(constr) =>
-				{
-					constr.instances =
-						constr.original_instances.reduce
-							(
-								(instances, instance_addr) =>
-									Object.defineProperty
-									(
-										instances,
-										instance_addr,
-
-										{ value: new constr(instance_addr) },
-									),
-
-								{},
-							);
-				},
-			);
+		// [
+		// 	this.Material,
+		// 	this.UniformBlock,
+		// ]
+		// 	.forEach
+		// 	(
+		// 		(constr) =>
+		// 		{
+		// 			constr.instances =
+		// 				constr.original_instances.map
+		// 				((instance_addr) => constr.getInstance(instance_addr));
+		// 		},
+		// 	);
 
 		this._context.configure
 		({
