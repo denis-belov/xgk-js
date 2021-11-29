@@ -72,7 +72,6 @@ export default class WebGLRenderer
 				// For updating WebGL single named uniforms.
 				// if (this.type)
 				this.typed_data = wasm.Floatv(this.object_addr, this.size / 4);
-				LOG(this.size / 4, this.typed_data)
 			}
 		};
 
@@ -83,28 +82,12 @@ export default class WebGLRenderer
 		class UniformBlock extends Base
 		{
 			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 3);
+				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 4);
+
+			static original_instances =
+				wasm.StdVectorAddr(wasm.exports._ZN3XGK3API12UniformBlock9instancesE);
 
 			static used_instance = null;
-
-			static getInfo (addr)
-			{
-				const original_struct =
-				{
-					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
-
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
-				};
-
-				const result =
-				{
-					binding: original_struct.binding,
-
-					name: WasmWrapper.uint8Array2DomString(original_struct.name),
-				};
-
-				return result;
-			}
 
 
 
@@ -116,11 +99,11 @@ export default class WebGLRenderer
 				{
 					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
+					type: wasm.SizeT(addr + UniformBlock.original_struct_offsets[1]),
 
-					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[2]),
 
-					// dedicated: wasm.SizeT(addr + UniformBlock.original_struct_offsets[3]),
+					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[3]),
 				};
 
 				this.addr = addr;
@@ -161,8 +144,6 @@ export default class WebGLRenderer
 
 				gl.bindBuffer(gl.UNIFORM_BUFFER, null);
 			}
-
-			// collectObjects ()
 
 			use ()
 			{
@@ -356,8 +337,6 @@ export default class WebGLRenderer
 				}
 			}
 
-			// collectObjects ()
-
 			use ()
 			{
 				Material.used_instance = this;
@@ -427,8 +406,6 @@ export default class WebGLRenderer
 
 		this.Scene = Scene;
 	}
-
-	// collectMaterials ()
 
 	render ()
 	{

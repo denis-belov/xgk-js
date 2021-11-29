@@ -12,6 +12,7 @@
  *
  *
  * TODO: determination capabiity of what wasm memory type is being used.
+ * TODO: Rename SizeT to Size.
  */
 
 
@@ -44,6 +45,18 @@ export default class WasmWrapper
 	}
 
 	Addrv (addr, length, offset = 0)
+	{
+		const _addr = (addr + (offset * WasmWrapper.PTR_SIZE)) / 4;
+
+		return this.mem.UI32.subarray(_addr, _addr + length);
+	}
+
+	Uint32 (addr, offset = 0)
+	{
+		return this.mem.UI32[(addr + (offset * WasmWrapper.PTR_SIZE)) / 4];
+	}
+
+	Uint32v (addr, length, offset = 0)
 	{
 		const _addr = (addr + (offset * WasmWrapper.PTR_SIZE)) / 4;
 
@@ -128,6 +141,35 @@ export default class WasmWrapper
 				this.exports.getStdStringData(_addr),
 
 				this.exports.getStdStringSize(_addr),
+			);
+
+		return result;
+	}
+
+	StdVectorUint32 (addr, offset = 0)
+	{
+		/**
+		 * 	These funcions must to be defined:
+
+		 *	extern "C" void* getStdVectorDataUint32 (std::vector<uint32_t>& v)
+		 *	{
+		 *		return v.data();
+		 *	}
+		 *
+		 *	extern "C" std::size_t getStdVectorSizeUint32 (std::vector<uint32_t>& v)
+		 *	{
+		 *		return v.size();
+		 *	}
+		 */
+
+		const _addr = addr + (offset * WasmWrapper.PTR_SIZE);
+
+		const result =
+			this.Uint32v
+			(
+				this.exports.getStdVectorDataUint32(_addr),
+
+				this.exports.getStdVectorSizeUint32(_addr),
 			);
 
 		return result;

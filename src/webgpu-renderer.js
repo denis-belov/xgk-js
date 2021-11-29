@@ -83,7 +83,7 @@ export default class WebGPURenderer
 		class UniformBlock extends Base
 		{
 			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 3);
+				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 4);
 
 			static original_instances =
 				wasm.StdVectorAddr(wasm.exports._ZN3XGK3API12UniformBlock9instancesE);
@@ -100,9 +100,11 @@ export default class WebGPURenderer
 				{
 					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[1]),
+					type: wasm.SizeT(addr + UniformBlock.original_struct_offsets[1]),
 
-					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[2]),
+					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[2]),
+
+					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[3]),
 				};
 
 				this.addr = addr;
@@ -176,8 +178,6 @@ export default class WebGPURenderer
 				this.use();
 			}
 
-			// collectObjects ()
-
 			use ()
 			{
 				for
@@ -198,6 +198,99 @@ export default class WebGPURenderer
 
 
 
+		// Descriptor set is a bind group in vulkak terms.
+		class DescriptorSet extends Base
+		{
+			static original_struct_offsets =
+				wasm.SizeTv(wasm.exports.descriptor_set_offsets, 1);
+
+			static original_instances =
+				wasm.StdVectorAddr(wasm.exports._ZN8DescriptorSet9instancesE);
+
+			static ENUM =
+			{
+				BINDING_TYPE:
+				{
+					UNIFORM_BUFFER: 0,
+				},
+			};
+
+			static used_instance = null;
+
+
+
+			constructor (addr)
+			{
+				super(addr);
+
+				const original_struct =
+				{
+					bindings: wasm.StdVectorAddr(addr + DescriptorSet.original_struct_offsets[0]),
+				};
+
+				this.addr = addr;
+
+
+
+				this.binding_seq = [];
+				this.binding_dict = {};
+
+				const bind_group_layout_descriptor =
+				{
+					entryCount: 0,
+					entries: [],
+				};
+
+				this.bind_group_descriptor =
+				{
+					layout: null,
+
+					entryCount: 0,
+					entries: [],
+				};
+
+				original_struct.bindings.forEach
+				(
+					(binding_addr) =>
+					{
+						const binding = UniformBlock.getInstance(binding_addr);
+
+						bind_group_layout_descriptor.entries.push(binding.entry_layout);
+
+						++bind_group_layout_descriptor.entryCount;
+
+						this.bind_group_descriptor.entries.push(binding.entry);
+
+						++this.bind_group_descriptor.entryCount;
+
+						this.binding_seq.push(binding);
+						this.binding_dict[binding.name] = binding;
+					},
+				);
+
+
+
+				const bind_group_layout = renderer.device.createBindGroupLayout(bind_group_layout_descriptor);
+
+				this.bind_group_descriptor.layout = bind_group_layout;
+
+				this.bind_group =
+					renderer.device.createBindGroup(this.bind_group_descriptor);
+			}
+
+			use (bind_group_index)
+			{
+				renderer.render_pass_encoder.setBindGroup(bind_group_index, this.bind_group, []);
+
+				// use for loop
+				this.binding_seq.forEach((binding) => binding.use());
+			}
+		};
+
+		this.DescriptorSet = DescriptorSet;
+
+
+
 		class Material extends Base
 		{
 			static original_struct_offsets =
@@ -205,8 +298,6 @@ export default class WebGPURenderer
 
 			static original_instances =
 				wasm.StdVectorAddr(wasm.exports._ZN8Material9instancesE);
-
-			// static instances = null;
 
 			static ENUM =
 			{
@@ -240,7 +331,11 @@ export default class WebGPURenderer
 
 					uniform_blocks: wasm.StdVectorAddr(addr + Material.original_struct_offsets[8]),
 
-					dedicated_uniform_block: addr + Material.original_struct_offsets[9],
+					descriptor_sets: wasm.StdVectorAddr(addr + Material.original_struct_offsets[9]),
+
+					// dedicated_uniform_block: addr + Material.original_struct_offsets[9],
+
+					// glsl450es_code_fragment: wasm.StdVectorUint32(addr + Material.original_struct_offsets[10]),
 				};
 
 				this.addr = addr;
@@ -325,65 +420,24 @@ export default class WebGPURenderer
 
 
 
-				const bind_group_layout_descriptor =
-				{
-					entryCount: 0,
-					entries: [],
-				};
-
-				const bind_group_descriptor =
-				{
-					layout: null,
-
-					entry_count: 0,
-					entries: [],
-				};
-
-				this.dedicated_uniform_block = renderer.UniformBlock.getInstance(original_struct.dedicated_uniform_block);
-
-				if (this.dedicated_uniform_block.uniforms.length > 0)
-				{
-					bind_group_layout_descriptor.entries.push(this.dedicated_uniform_block.entry_layout);
-
-					++bind_group_layout_descriptor.entryCount;
-
-					bind_group_descriptor.entries.push(this.dedicated_uniform_block.entry);
-
-					++bind_group_descriptor.entryCount;
-				}
-
-				original_struct.uniform_blocks.forEach
-				(
-					(uniform_block_addr) =>
-					{
-						const uniform_block = renderer.UniformBlock.getInstance(uniform_block_addr);
-
-						bind_group_layout_descriptor.entries.push(uniform_block.entry_layout);
-
-						++bind_group_layout_descriptor.entryCount;
-
-						bind_group_descriptor.entries.push(uniform_block.entry);
-
-						++bind_group_descriptor.entryCount;
-					},
-				);
-
-
-
-				const bind_group_layout = renderer.device.createBindGroupLayout(bind_group_layout_descriptor);
-
-				bind_group_descriptor.layout = bind_group_layout;
-
-				this.bind_group =
-					renderer.device.createBindGroup(bind_group_descriptor);
+				this.descriptor_sets = [];
 
 				const pipeline_layout_descriptor =
 				{
-					bindGroupLayouts:
-					[
-						bind_group_layout,
-					],
+					bindGroupLayouts: [],
 				};
+
+				original_struct.descriptor_sets.forEach
+				(
+					(descriptor_set_addr) =>
+					{
+						const descriptor_set = DescriptorSet.getInstance(descriptor_set_addr);
+
+						pipeline_layout_descriptor.bindGroupLayouts.push(descriptor_set.bind_group_descriptor.layout);
+
+						this.descriptor_sets.push(descriptor_set);
+					},
+				);
 
 				pipeline_configuration.layout =
 					renderer.device.createPipelineLayout(pipeline_layout_descriptor);
@@ -393,18 +447,11 @@ export default class WebGPURenderer
 				this.pipeline = renderer.device.createRenderPipeline(pipeline_configuration);
 			}
 
-			// collectObjects ()
-
 			use ()
 			{
 				Material.used_instance = this;
 
-				// if (this.dedicated_uniform_block)
-				// {
-				this.dedicated_uniform_block.use();
-				// }
-
-				renderer.render_pass_encoder.setBindGroup(0, this.bind_group, []);
+				// use dedicated_descriptor_set
 
 				renderer.render_pass_encoder.setPipeline(this.pipeline);
 			}
@@ -458,22 +505,6 @@ export default class WebGPURenderer
 		this.adapter = await navigator.gpu.requestAdapter();
 
 		this.device = await this.adapter.requestDevice();
-
-		LOG(this.device);
-
-		// [
-		// 	this.Material,
-		// 	this.UniformBlock,
-		// ]
-		// 	.forEach
-		// 	(
-		// 		(constr) =>
-		// 		{
-		// 			constr.instances =
-		// 				constr.original_instances.map
-		// 				((instance_addr) => constr.getInstance(instance_addr));
-		// 		},
-		// 	);
 
 		this._context.configure
 		({
