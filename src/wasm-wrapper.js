@@ -302,12 +302,14 @@ export default class WasmWrapper
 
 								__multi3: () => 0,
 								console_log: (x) => LOG('C/C++:', x),
-								getTime: () => Date.now(),
+								console_log_f: (x) => LOG('C/C++:', x),
+								date_now: () => Date.now(),
 							},
 
 							custom_imports,
 						),
 
+					// TODO: learn what is wasi_snapshot_preview1.
 					wasi_snapshot_preview1:
 					{
 						fd_seek: () => 0,
@@ -315,6 +317,8 @@ export default class WasmWrapper
 						fd_close: () => 0,
 						fd_fdstat_get: () => 0,
 						proc_exit: () => 0,
+
+						clock_time_get: () => 0,
 					},
 				},
 			);
