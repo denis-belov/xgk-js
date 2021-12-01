@@ -432,6 +432,7 @@ export default class WasmWrapper
 
 		// this.memory.grow(100);
 
+		// For non-import memory
 		// const { buffer } = this.exports.memory;
 		const { buffer } = memory;
 
