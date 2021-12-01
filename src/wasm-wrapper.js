@@ -28,6 +28,11 @@ export default class WasmWrapper
 		return WasmWrapper.text_decoder.decode(uint8_array);
 	}
 
+	// static uint8Array2DomString (uint8_array)
+	// {
+	// 	return WasmWrapper.text_decoder.decode(new Uint8Array(uint8_array));
+	// }
+
 	constructor ()
 	{
 		this.mem =
@@ -233,19 +238,69 @@ export default class WasmWrapper
 		return result;
 	}
 
-	async init (code, custom_imports)
+	async mod (wasm_module, memory, custom_imports)
 	{
-		/* eslint-disable consistent-this */
-		// const _this = this;
+		const wasm_module_instance =
+			await WebAssembly.instantiate
+			// await WebAssembly.instantiateStreaming
+			(
+				wasm_module,
 
+				{
+					js: { mem: memory },
+
+					env:
+						Object.assign
+						(
+							{
+								__memory_base: 0,
+								__table_base: 0,
+								// memory,
+								__multi3: () => 0,
+								console_log: (x) => LOG('C/C++:', x),
+								console_log_f: (x) => LOG('C/C++:', x),
+								date_now: () => Date.now(),
+							},
+
+							custom_imports,
+						),
+
+					// TODO: learn what is wasi_snapshot_preview1.
+					wasi_snapshot_preview1:
+					{
+						fd_seek: () => 0,
+						fd_write: () => 0,
+						fd_close: () => 0,
+						fd_fdstat_get: () => 0,
+						proc_exit: () => 0,
+
+						clock_time_get: () => 0,
+					},
+				},
+			);
+
+		this.exports = wasm_module_instance.exports;
+
+		// this.memory.grow(100);
+
+		const { buffer } = this.exports.memory;
+
+		this.mem.UI8 = new Uint8Array(buffer);
+		this.mem.UI32 = new Uint32Array(buffer);
+		this.mem.F32 = new Float32Array(buffer);
+	}
+
+	async init (code, memory, custom_imports)
+	{
 		const wasm_module = await WebAssembly.compile(code);
+
+		// this.module = wasm_module;
 
 		LOG(wasm_module);
 
-		const memory = new WebAssembly.Memory({ initial: 1 });
-
 		const wasm_module_instance =
 			await WebAssembly.instantiate
+			// await WebAssembly.instantiateStreaming
 			(
 				wasm_module,
 
@@ -256,7 +311,9 @@ export default class WasmWrapper
 							{
 								__memory_base: 0,
 								__table_base: 0,
+								// memory: this.memory,
 								memory,
+								// memory: memory ? null : this.memory,
 
 								// sin: Math.sin,
 								// cos: Math.cos,
@@ -327,7 +384,7 @@ export default class WasmWrapper
 
 		this.exports = wasm_module_instance.exports;
 
-		this.exports.memory.grow(100);
+		// this.memory.grow(100);
 
 		const { buffer } = this.exports.memory;
 
