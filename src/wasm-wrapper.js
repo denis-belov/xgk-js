@@ -17,21 +17,25 @@
 
 
 
+const IDLE_FUNCTION = () => 0;
+
+
+
 export default class WasmWrapper
 {
 	static PTR_SIZE = 4;
 
 	static text_decoder = new TextDecoder('utf-8');
 
-	static uint8Array2DomString (uint8_array)
-	{
-		return WasmWrapper.text_decoder.decode(uint8_array);
-	}
-
 	// static uint8Array2DomString (uint8_array)
 	// {
-	// 	return WasmWrapper.text_decoder.decode(new Uint8Array(uint8_array));
+	// 	return WasmWrapper.text_decoder.decode(uint8_array);
 	// }
+
+	static uint8Array2DomString (uint8_array)
+	{
+		return WasmWrapper.text_decoder.decode(new Uint8Array(uint8_array));
+	}
 
 	constructor ()
 	{
@@ -256,7 +260,7 @@ export default class WasmWrapper
 								__memory_base: 0,
 								__table_base: 0,
 								// memory,
-								__multi3: () => 0,
+								__multi3: IDLE_FUNCTION,
 								console_log: (x) => LOG('C/C++:', x),
 								console_log_f: (x) => LOG('C/C++:', x),
 								date_now: () => Date.now(),
@@ -268,13 +272,13 @@ export default class WasmWrapper
 					// TODO: learn what is wasi_snapshot_preview1.
 					wasi_snapshot_preview1:
 					{
-						fd_seek: () => 0,
-						fd_write: () => 0,
-						fd_close: () => 0,
-						fd_fdstat_get: () => 0,
-						proc_exit: () => 0,
+						fd_seek: IDLE_FUNCTION,
+						fd_write: IDLE_FUNCTION,
+						fd_close: IDLE_FUNCTION,
+						fd_fdstat_get: IDLE_FUNCTION,
+						proc_exit: IDLE_FUNCTION,
 
-						clock_time_get: () => 0,
+						clock_time_get: IDLE_FUNCTION,
 					},
 				},
 			);
@@ -294,9 +298,9 @@ export default class WasmWrapper
 	{
 		const wasm_module = await WebAssembly.compile(code);
 
-		// this.module = wasm_module;
+		LOG(wasm_module)
 
-		LOG(wasm_module);
+		// this.module = wasm_module;
 
 		const wasm_module_instance =
 			await WebAssembly.instantiate
@@ -348,16 +352,16 @@ export default class WasmWrapper
 								// 	return result;
 								// },
 
-								// memset: () => 0,
-								// printf: () => 0,
-								// putchar: () => 0,
+								// memset: IDLE_FUNCTION,
+								// printf: IDLE_FUNCTION,
+								// putchar: IDLE_FUNCTION,
 
-								// _ZdlPv: () => 0, // delete
-								// _ZSt20__throw_length_errorPKc: () => 0,
+								// _ZdlPv: IDLE_FUNCTION, // delete
+								// _ZSt20__throw_length_errorPKc: IDLE_FUNCTION,
 								// _ZSt17__throw_bad_allocv: () => LOG('_ZSt17__throw_bad_allocv'),
-								// __cxa_atexit: () => 0,
+								// __cxa_atexit: IDLE_FUNCTION,
 
-								__multi3: () => 0,
+								__multi3: IDLE_FUNCTION,
 								console_log: (x) => LOG('C/C++:', x),
 								console_log_f: (x) => LOG('C/C++:', x),
 								date_now: () => Date.now(),
@@ -369,13 +373,55 @@ export default class WasmWrapper
 					// TODO: learn what is wasi_snapshot_preview1.
 					wasi_snapshot_preview1:
 					{
-						fd_seek: () => 0,
-						fd_write: () => 0,
-						fd_close: () => 0,
-						fd_fdstat_get: () => 0,
-						proc_exit: () => 0,
+						fd_seek: IDLE_FUNCTION,
+						fd_write: IDLE_FUNCTION,
+						fd_close: IDLE_FUNCTION,
+						fd_fdstat_get: IDLE_FUNCTION,
+						fd_advise: IDLE_FUNCTION,
+						fd_allocate: IDLE_FUNCTION,
+						fd_datasync: IDLE_FUNCTION,
+						fd_fdstat_set_flags: IDLE_FUNCTION,
+						fd_fdstat_set_rights: IDLE_FUNCTION,
+						fd_filestat_get: IDLE_FUNCTION,
+						fd_filestat_set_size: IDLE_FUNCTION,
+						fd_filestat_set_times: IDLE_FUNCTION,
+						fd_pread: IDLE_FUNCTION,
+						fd_prestat_get: IDLE_FUNCTION,
+						fd_prestat_dir_name: IDLE_FUNCTION,
+						fd_pwrite: IDLE_FUNCTION,
+						fd_read: IDLE_FUNCTION,
+						fd_readdir: IDLE_FUNCTION,
+						fd_renumber: IDLE_FUNCTION,
+						fd_sync: IDLE_FUNCTION,
+						fd_tell: IDLE_FUNCTION,
 
-						clock_time_get: () => 0,
+						path_create_directory: IDLE_FUNCTION,
+						path_filestat_get: IDLE_FUNCTION,
+						path_filestat_set_times: IDLE_FUNCTION,
+						path_link: IDLE_FUNCTION,
+						path_open: IDLE_FUNCTION,
+						path_readlink: IDLE_FUNCTION,
+						path_remove_directory: IDLE_FUNCTION,
+						path_rename: IDLE_FUNCTION,
+						path_symlink: IDLE_FUNCTION,
+						path_unlink_file: IDLE_FUNCTION,
+						poll_oneoff: IDLE_FUNCTION,
+						proc_raise: IDLE_FUNCTION,
+						sched_yield: IDLE_FUNCTION,
+						random_get: IDLE_FUNCTION,
+						sock_recv: IDLE_FUNCTION,
+						sock_send: IDLE_FUNCTION,
+						sock_shutdown: IDLE_FUNCTION,
+
+						proc_exit: IDLE_FUNCTION,
+
+						clock_time_get: IDLE_FUNCTION,
+
+						args_get: IDLE_FUNCTION,
+						args_sizes_get: IDLE_FUNCTION,
+						environ_get: IDLE_FUNCTION,
+						environ_sizes_get: IDLE_FUNCTION,
+						clock_res_get: IDLE_FUNCTION,
 					},
 				},
 			);
@@ -386,7 +432,8 @@ export default class WasmWrapper
 
 		// this.memory.grow(100);
 
-		const { buffer } = this.exports.memory;
+		// const { buffer } = this.exports.memory;
+		const { buffer } = memory;
 
 		this.mem.UI8 = new Uint8Array(buffer);
 		this.mem.UI32 = new Uint32Array(buffer);
