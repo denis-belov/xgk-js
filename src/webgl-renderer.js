@@ -34,110 +34,38 @@ export default class WebGLRenderer
 
 
 
-		class Uniform extends Base
-		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 4);
-
-
-
-			constructor (addr)
-			{
-				super(addr);
-
-				const original_struct =
-				{
-					object_addr: wasm.Addr(addr + Uniform.original_struct_offsets[0]),
-
-					name: wasm.StdString(addr + Uniform.original_struct_offsets[1]),
-
-					block_index: wasm.SizeT(addr + Uniform.original_struct_offsets[2]),
-
-					size: wasm.SizeT(addr + Uniform.original_struct_offsets[3]),
-				};
-
-				this.addr = addr;
-
-				this.object_addr = original_struct.object_addr;
-
-				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
-
-				// uniform block index
-				this.block_index = original_struct.block_index;
-
-				this.size = original_struct.size;
-
-				this._data = wasm.Charv2(this.object_addr, this.size);
-
-				// For updating WebGL single named uniforms.
-				// if (this.type)
-				this.typed_data = wasm.Floatv(this.object_addr, this.size / 4);
-			}
-		};
-
+		class Uniform extends wasm.Uniform {};
 		this.Uniform = Uniform;
 
 
 
-		class UniformBlock extends Base
+		class UniformBlock extends wasm.UniformBlock
 		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 4);
-
-			static original_instances =
-				wasm.StdVectorAddr(wasm.exports._ZN3XGK3API12UniformBlock9instancesE);
-
-			static used_instance = null;
-
-
-
 			constructor (addr)
 			{
 				super(addr);
 
-				const original_struct =
-				{
-					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-					type: wasm.SizeT(addr + UniformBlock.original_struct_offsets[1]),
-
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[2]),
-
-					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[3]),
-				};
-
-				this.addr = addr;
-
-				this.binding = original_struct.binding;
-
-				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
-
-
-
-				this.buffer = gl.createBuffer();
-
-				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
-				gl.bindBufferBase(gl.UNIFORM_BUFFER, this.binding, this.buffer);
-
-
-
-				let buffer_length = 0;
 
 				this.uniforms =
 					// TypedArray::map returns TypedArray, but need Array.
-					Array.from(original_struct.uniforms).map
+					Array.from(this.original_struct.uniforms).map
 					(
 						(uniform_addr) =>
 						{
 							const uniform = Uniform.getInstance(uniform_addr);
 
-							buffer_length += uniform._data.length;
+							this.buffer_length += uniform._data.length;
 
 							return uniform;
 						},
 					);
 
-				gl.bufferData(gl.UNIFORM_BUFFER, buffer_length, gl.DYNAMIC_DRAW);
+				this.buffer = gl.createBuffer();
+
+				gl.bindBuffer(gl.UNIFORM_BUFFER, this.buffer);
+				gl.bindBufferBase(gl.UNIFORM_BUFFER, this.binding, this.buffer);
+				gl.bufferData(gl.UNIFORM_BUFFER, this.buffer_length, gl.DYNAMIC_DRAW);
 
 				// Initially update uniforms.
 				this.use();

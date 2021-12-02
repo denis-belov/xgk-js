@@ -5,132 +5,53 @@ import Base from './base';
 export default class WebGPURenderer
 {
 	// dpr
-	// renderer info (gl.getParameter(gl.SHADING_LANGUAGE_VERSION)...)
-	constructor (wasm, canvas, width, height)
+	constructor (options)
 	{
-		const WasmWrapper = wasm.constructor;
-
-
-
 		/* eslint-disable-next-line consistent-this */
 		const renderer = this;
 
-		this.materials = [];
+		this.wasm_wrapper_instance = options.wasm_wrapper_instance;
+		const wasm = this.wasm_wrapper_instance;
+		const WasmWrapper = wasm.constructor;
 
-		this.objects = [];
+		this.size = options.size || [ 1, 1 ];
 
-
-
-		this.canvas = canvas || document.createElement('canvas');
-
-		this.canvas.width = width;
-		this.canvas.height = height;
+		this.canvas = options.canvas || document.createElement('canvas');
+		this.canvas.width = this.size[0];
+		this.canvas.height = this.size[1];
 
 		this._context = this.canvas.getContext('webgpu');
 
-		const _gpu = this._context;
-
 		this.adapter = null;
 		this.device = null;
+		this.render_format = options.render_format;
 
 		this.render_pass_encoder = null;
 
 
 
-		class Uniform extends Base
-		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API15uniform_offsetsE, 4);
-
-
-
-			constructor (addr)
-			{
-				super(addr);
-
-				const original_struct =
-				{
-					object_addr: wasm.Addr(addr + Uniform.original_struct_offsets[0]),
-
-					// Redundant since WebGPU doesn't have single named uniform binding?
-					name: wasm.StdString(addr + Uniform.original_struct_offsets[1]),
-
-					// TODO: rename to offset
-					block_index: wasm.SizeT(addr + Uniform.original_struct_offsets[2]),
-
-					size: wasm.SizeT(addr + Uniform.original_struct_offsets[3]),
-				};
-
-				this.addr = addr;
-
-				this.object_addr = original_struct.object_addr;
-
-				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
-
-				// uniform block index
-				this.block_index = original_struct.block_index;
-
-				this.size = original_struct.size;
-
-				this._data = wasm.Charv2(this.object_addr, this.size);
-			}
-		};
-
+		class Uniform extends wasm.Uniform {};
 		this.Uniform = Uniform;
 
 
 
-		class UniformBlock extends Base
+		class UniformBlock extends wasm.UniformBlock
 		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports._ZN3XGK3API21uniform_block_offsetsE, 4);
-
-			static original_instances =
-				wasm.StdVectorAddr(wasm.exports._ZN3XGK3API12UniformBlock9instancesE);
-
-			static used_instance = null;
-
-
-
 			constructor (addr)
 			{
 				super(addr);
 
-				const original_struct =
-				{
-					binding: wasm.SizeT(addr + UniformBlock.original_struct_offsets[0]),
 
-					type: wasm.SizeT(addr + UniformBlock.original_struct_offsets[1]),
-
-					name: wasm.StdString(addr + UniformBlock.original_struct_offsets[2]),
-
-					uniforms: wasm.StdVectorAddr(addr + UniformBlock.original_struct_offsets[3]),
-				};
-
-				this.addr = addr;
-
-				this.binding = original_struct.binding;
-
-				this.name = WasmWrapper.uint8Array2DomString(original_struct.name);
-
-
-
-
-				this.buffer = null;
-
-
-
-				let buffer_length = 0;
 
 				this.uniforms =
 					// TypedArray::map returns TypedArray, but need Array.
-					Array.from(original_struct.uniforms).map
+					Array.from(this.original_struct.uniforms).map
 					(
 						(uniform_addr) =>
 						{
 							const uniform = Uniform.getInstance(uniform_addr);
 
-							buffer_length += uniform._data.length;
+							this.buffer_length += uniform._data.length;
 
 							return uniform;
 						},
@@ -139,7 +60,7 @@ export default class WebGPURenderer
 				this.buffer =
 					renderer.device.createBuffer
 					({
-						size: buffer_length,
+						size: this.buffer_length,
 
 						usage:
 						(
@@ -156,7 +77,7 @@ export default class WebGPURenderer
 					{
 						buffer: this.buffer,
 						offset: 0,
-						size: buffer_length,
+						size: this.buffer_length,
 					},
 				};
 
@@ -392,7 +313,7 @@ export default class WebGPURenderer
 						targets:
 						[
 							{
-								format: 'bgra8unorm',
+								format: renderer.render_format,
 							},
 						],
 					},
@@ -506,14 +427,19 @@ export default class WebGPURenderer
 
 		this.device = await this.adapter.requestDevice();
 
+		if (!this.render_format)
+		{
+			this.render_format = this._context.getPreferredFormat(this.adapter);
+		}
+
 		this._context.configure
 		({
 			device: this.device,
-			format: 'bgra8unorm',
+			format: this.render_format,
 			usage: window.GPUTextureUsage.RENDER_ATTACHMENT,
 			// GPUPredefinedColorSpace colorSpace = "srgb";
 			// GPUCanvasCompositingAlphaMode compositingAlphaMode = "opaque";
-			size: { width: 800, height: 600, depthOrArrayLayers: 1 },
+			size: { width: this.size[0], height: this.size[1], depthOrArrayLayers: 1 },
 			// size: [ 800, 600 ],
 		});
 	}
