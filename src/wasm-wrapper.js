@@ -227,7 +227,7 @@ export default class WasmWrapper
 		return result;
 	}
 
-	async init (code, memory, custom_imports)
+	async init (code, memory, declareXgkApiClasses = true, custom_imports)
 	{
 		const wasm_wrapper = this;
 
@@ -379,104 +379,242 @@ export default class WasmWrapper
 
 
 
-		class Uniform extends Base
+		if (declareXgkApiClasses)
 		{
-			static original_struct_offsets =
-				wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API15uniform_offsetsE, 4);
-
-			static getOriginalStruct (addr)
+			class Uniform extends Base
 			{
-				const original_struct =
+				static original_struct_descriptor =
 				{
-					object_addr: wasm_wrapper.Addr(addr + Uniform.original_struct_offsets[0]),
-
-					name: wasm_wrapper.StdString(addr + Uniform.original_struct_offsets[1]),
-
+					object_addr: 'Addr',
+					name: 'StdString',
 					// TODO: rename to offset
-					block_index: wasm_wrapper.SizeT(addr + Uniform.original_struct_offsets[2]),
-
-					size: wasm_wrapper.SizeT(addr + Uniform.original_struct_offsets[3]),
+					block_index: 'SizeT',
+					size: 'SizeT',
 				};
 
-				return original_struct;
-			}
+				static original_struct_offsets =
+					wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API15uniform_offsetsE, Object.keys(this.original_struct_descriptor).length);
 
-			constructor (addr)
-			{
-				super(addr);
-
-				this.original_struct = Uniform.getOriginalStruct(addr);
-
-				this.addr = addr;
-
-				this.object_addr = this.original_struct.object_addr;
-
-				this.name = WasmWrapper.uint8Array2DomString(this.original_struct.name);
-
-				// uniform block index
-				this.block_index = this.original_struct.block_index;
-
-				this.size = this.original_struct.size;
-
-				this._data = wasm_wrapper.Charv2(this.object_addr, this.size);
-			}
-		}
-
-		this.Uniform = Uniform;
-
-
-
-		class UniformBlock extends Base
-		{
-			static original_struct_offsets =
-				wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API21uniform_block_offsetsE, 4);
-
-			static original_instances =
-				wasm_wrapper.StdVectorAddr(wasm_wrapper.exports._ZN3XGK3API12UniformBlock9instancesE);
-
-			static used_instance = null;
-
-			static getOriginalStruct (addr)
-			{
-				const original_struct =
+				static getOriginalStruct (addr)
 				{
-					binding: wasm_wrapper.SizeT(addr + UniformBlock.original_struct_offsets[0]),
+					const original_struct =
+						Base.getOriginalStruct
+						(
+							this.original_struct_descriptor,
+							this.original_struct_offsets,
+							wasm_wrapper,
+							addr,
+						);
 
-					type: wasm_wrapper.SizeT(addr + UniformBlock.original_struct_offsets[1]),
+					return original_struct;
+				}
 
-					name: wasm_wrapper.StdString(addr + UniformBlock.original_struct_offsets[2]),
 
-					uniforms: wasm_wrapper.StdVectorAddr(addr + UniformBlock.original_struct_offsets[3]),
+
+				constructor (addr)
+				{
+					super(addr);
+
+					this.addr = addr;
+
+
+
+					this.original_struct = Uniform.getOriginalStruct(this.addr);
+
+					this.object_addr = this.original_struct.object_addr;
+
+					this.name = WasmWrapper.uint8Array2DomString(this.original_struct.name);
+
+					// uniform block index
+					this.block_index = this.original_struct.block_index;
+
+					this.size = this.original_struct.size;
+
+					this._data = wasm_wrapper.Charv2(this.object_addr, this.size);
+				}
+			}
+
+			this.Uniform = Uniform;
+
+
+
+			class UniformBlock extends Base
+			{
+				static original_struct_descriptor =
+				{
+					binding: 'SizeT',
+					type: 'SizeT',
+					name: 'StdString',
+					uniforms: 'StdVectorAddr',
 				};
 
-				return original_struct;
-			}
+				static original_struct_offsets =
+					wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API21uniform_block_offsetsE, Object.keys(this.original_struct_descriptor).length);
+
+				static getOriginalStruct (addr)
+				{
+					const original_struct =
+						Base.getOriginalStruct
+						(
+							this.original_struct_descriptor,
+							this.original_struct_offsets,
+							wasm_wrapper,
+							addr,
+						);
+
+					return original_struct;
+				}
 
 
 
-			constructor (addr)
+				constructor (addr)
+				{
+					super(addr);
+
+					this.addr = addr;
+
+
+
+					this.original_struct = UniformBlock.getOriginalStruct(this.addr);
+
+					this.binding = this.original_struct.binding;
+
+					this.type = this.original_struct.type;
+
+					this.name = WasmWrapper.uint8Array2DomString(this.original_struct.name);
+
+
+
+					this.uniforms_seq = null;
+					this.uniforms_dict = {};
+
+					this.buffer = null;
+
+					this.buffer_length = 0;
+				}
+
+				getUniforms (renderer)
+				{
+					this.uniforms_seq =
+						// TypedArray::map returns TypedArray, but need Array.
+						Array.from(this.original_struct.uniforms).map
+						(
+							(uniform_addr) =>
+							{
+								const uniform = renderer.Uniform.getInstance(uniform_addr);
+
+								this.buffer_length += uniform._data.length;
+
+								this.uniforms_dict[uniform.name] = uniform;
+
+								return uniform;
+							},
+						);
+				}
+			};
+
+			this.UniformBlock = UniformBlock;
+
+
+
+			class Material extends Base
 			{
-				super(addr);
+				static original_struct_descriptor =
+				{
+					topology: 'SizeT',
+					glsl100es_code_vertex: 'StdString',
+					glsl100es_code_fragment: 'StdString',
+					glsl300es_code_vertex: 'StdString',
+					glsl300es_code_fragment: 'StdString',
+					spirv_code_vertex: 'StdVectorUint32',
+					spirv_code_fragment: 'StdVectorUint32',
+					wgsl_code_vertex: 'StdString',
+					wgsl_code_fragment: 'StdString',
+					uniforms: 'StdVectorAddr',
+					uniform_blocks: 'StdVectorAddr',
+					descriptor_sets: 'StdVectorAddr'
+				};
 
-				this.original_struct = UniformBlock.getOriginalStruct(addr);
+				static original_struct_offsets =
+					wasm_wrapper.SizeTv(wasm_wrapper.exports.material_offsets, Object.keys(this.original_struct_descriptor).length);
 
-				this.addr = addr;
+				static used_instance = null;
 
-				this.binding = this.original_struct.binding;
+				static getOriginalStruct (addr)
+				{
+					const original_struct =
+						Base.getOriginalStruct
+						(
+							this.original_struct_descriptor,
+							this.original_struct_offsets,
+							wasm_wrapper,
+							addr,
+						);
 
-				this.type = this.original_struct.type;
-
-				this.name = WasmWrapper.uint8Array2DomString(this.original_struct.name);
-
+					return original_struct;
+				}
 
 
 
-				this.buffer = null;
+				constructor (addr)
+				{
+					super(addr);
 
-				this.buffer_length = 0;
-			}
-		};
+					this.addr = addr;
 
-		this.UniformBlock = UniformBlock;
+
+
+					this.original_struct = Material.getOriginalStruct(this.addr);
+
+					this.topology = null;
+				}
+
+				getTopology (renderer)
+				{
+					this.topology = renderer.Material.ENUM.TOPOLOGY[this.original_struct.topology];
+				}
+			};
+
+			this.Material = Material;
+
+
+
+			class _Object extends Base
+			{
+				constructor (addr)
+				{
+					super(addr);
+
+					this.addr = addr;
+
+
+
+					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr, 0) / 3;
+					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr, 1) / 3;
+
+					this.vertex_data = wasm_wrapper.StdVectorFloat(addr, 2);
+				}
+			};
+
+			this.Object = _Object;
+
+
+
+			class Scene extends Base
+			{
+				constructor (addr)
+				{
+					super(addr);
+
+					this.addr = addr;
+
+
+
+					this.vertex_data = wasm_wrapper.StdVectorFloat(addr);
+				}
+			};
+
+			this.Scene = Scene;
+		}
 	}
 }

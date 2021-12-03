@@ -1,3 +1,5 @@
+// import glslang from '@webgpu/glslang/dist/web-devel/glslang.js';
+
 import Base from './base';
 
 
@@ -17,8 +19,10 @@ export default class WebGPURenderer
 		this.size = options.size || [ 1, 1 ];
 
 		this.canvas = options.canvas || document.createElement('canvas');
-		this.canvas.width = this.size[0];
-		this.canvas.height = this.size[1];
+		// this.canvas.width = this.size[0];
+		// this.canvas.height = this.size[1];
+
+		[ this.canvas.width, this.canvas.height ] = this.size;
 
 		this._context = this.canvas.getContext('webgpu');
 
@@ -43,19 +47,7 @@ export default class WebGPURenderer
 
 
 
-				this.uniforms =
-					// TypedArray::map returns TypedArray, but need Array.
-					Array.from(this.original_struct.uniforms).map
-					(
-						(uniform_addr) =>
-						{
-							const uniform = Uniform.getInstance(uniform_addr);
-
-							this.buffer_length += uniform._data.length;
-
-							return uniform;
-						},
-					);
+				this.getUniforms(renderer);
 
 				this.buffer =
 					renderer.device.createBuffer
@@ -104,11 +96,11 @@ export default class WebGPURenderer
 				for
 				(
 					let uniform_index = 0;
-					uniform_index < this.uniforms.length;
+					uniform_index < this.uniforms_seq.length;
 					++uniform_index
 				)
 				{
-					const uniform = this.uniforms[uniform_index];
+					const uniform = this.uniforms_seq[uniform_index];
 
 					renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
 				}
@@ -119,14 +111,11 @@ export default class WebGPURenderer
 
 
 
-		// Descriptor set is a bind group in vulkak terms.
+		// Descriptor set is a bind group in vulkan terms.
 		class DescriptorSet extends Base
 		{
 			static original_struct_offsets =
 				wasm.SizeTv(wasm.exports.descriptor_set_offsets, 1);
-
-			static original_instances =
-				wasm.StdVectorAddr(wasm.exports._ZN8DescriptorSet9instancesE);
 
 			static ENUM =
 			{
@@ -212,14 +201,8 @@ export default class WebGPURenderer
 
 
 
-		class Material extends Base
+		class Material extends wasm.Material
 		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports.material_offsets, 10);
-
-			static original_instances =
-				wasm.StdVectorAddr(wasm.exports._ZN8Material9instancesE);
-
 			static ENUM =
 			{
 				TOPOLOGY:
@@ -232,36 +215,15 @@ export default class WebGPURenderer
 				],
 			};
 
-			static used_instance = null;
-
 
 
 			constructor (addr)
 			{
 				super(addr);
 
-				const original_struct =
-				{
-					topology: wasm.SizeT(addr + Material.original_struct_offsets[0]),
 
-					wgsl_code_vertex: wasm.StdString(addr + Material.original_struct_offsets[5]),
 
-					wgsl_code_fragment: wasm.StdString(addr + Material.original_struct_offsets[6]),
-
-					uniforms: wasm.StdVectorAddr(addr + Material.original_struct_offsets[7]),
-
-					uniform_blocks: wasm.StdVectorAddr(addr + Material.original_struct_offsets[8]),
-
-					descriptor_sets: wasm.StdVectorAddr(addr + Material.original_struct_offsets[9]),
-
-					// dedicated_uniform_block: addr + Material.original_struct_offsets[9],
-
-					// glsl450es_code_fragment: wasm.StdVectorUint32(addr + Material.original_struct_offsets[10]),
-				};
-
-				this.addr = addr;
-
-				this.topology = Material.ENUM.TOPOLOGY[original_struct.topology];
+				this.getTopology(renderer);
 
 
 
@@ -322,7 +284,8 @@ export default class WebGPURenderer
 
 
 				{
-					const code = WasmWrapper.uint8Array2DomString(original_struct.wgsl_code_vertex);
+					// const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_vertex);
+					const code = new Uint32Array(this.original_struct.spirv_code_vertex);
 
 					const shader_module = renderer.device.createShaderModule({ code });
 
@@ -332,7 +295,8 @@ export default class WebGPURenderer
 
 
 				{
-					const code = WasmWrapper.uint8Array2DomString(original_struct.wgsl_code_fragment);
+					// const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_fragment);
+					const code = new Uint32Array(this.original_struct.spirv_code_fragment);
 
 					const shader_module = renderer.device.createShaderModule({ code });
 
@@ -348,7 +312,7 @@ export default class WebGPURenderer
 					bindGroupLayouts: [],
 				};
 
-				original_struct.descriptor_sets.forEach
+				this.original_struct.descriptor_sets.forEach
 				(
 					(descriptor_set_addr) =>
 					{
@@ -372,7 +336,7 @@ export default class WebGPURenderer
 			{
 				Material.used_instance = this;
 
-				// use dedicated_descriptor_set
+				// Use dedicated_descriptor_set?
 
 				renderer.render_pass_encoder.setPipeline(this.pipeline);
 			}
@@ -382,20 +346,8 @@ export default class WebGPURenderer
 
 
 
-		class _Object extends Base
+		class _Object extends wasm.Object
 		{
-			constructor (addr)
-			{
-				super(addr);
-
-				this.addr = addr;
-
-				this.scene_vertex_data_offset = wasm.SizeT(addr, 0) / 3;
-				this.scene_vertex_data_length = wasm.SizeT(addr, 1) / 3;
-
-				this.vertex_data = wasm.StdVectorFloat(addr, 2);
-			}
-
 			draw ()
 			{
 				renderer.render_pass_encoder.draw(this.scene_vertex_data_length, 1, this.scene_vertex_data_offset, 0);
@@ -406,23 +358,14 @@ export default class WebGPURenderer
 
 
 
-		class Scene extends Base
-		{
-			constructor (addr)
-			{
-				super(addr);
-
-				this.addr = addr;
-
-				this.vertex_data = wasm.StdVectorFloat(addr, 0);
-			}
-		};
-
+		class Scene extends wasm.Scene {};
 		this.Scene = Scene;
 	}
 
 	async init ()
 	{
+		// LOG(await glslang())
+
 		this.adapter = await navigator.gpu.requestAdapter();
 
 		this.device = await this.adapter.requestDevice();
