@@ -1,6 +1,4 @@
-// import glslang from '@webgpu/glslang/dist/web-devel/glslang.js';
-
-import Base from './base';
+// import Base from './base';
 
 
 
@@ -112,11 +110,8 @@ export default class WebGPURenderer
 
 
 		// Descriptor set is a bind group in vulkan terms.
-		class DescriptorSet extends Base
+		class DescriptorSet extends wasm.DescriptorSet
 		{
-			static original_struct_offsets =
-				wasm.SizeTv(wasm.exports.descriptor_set_offsets, 1);
-
 			static ENUM =
 			{
 				BINDING_TYPE:
@@ -125,20 +120,11 @@ export default class WebGPURenderer
 				},
 			};
 
-			static used_instance = null;
-
 
 
 			constructor (addr)
 			{
 				super(addr);
-
-				const original_struct =
-				{
-					bindings: wasm.StdVectorAddr(addr + DescriptorSet.original_struct_offsets[0]),
-				};
-
-				this.addr = addr;
 
 
 
@@ -159,7 +145,7 @@ export default class WebGPURenderer
 					entries: [],
 				};
 
-				original_struct.bindings.forEach
+				this.original_struct.bindings.forEach
 				(
 					(binding_addr) =>
 					{

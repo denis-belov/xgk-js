@@ -1,4 +1,4 @@
-import Base from './base';
+// import Base from './base';
 
 
 
@@ -262,20 +262,20 @@ export default class WebGLRenderer
 
 
 
-		class ObjectIndexed extends Base
-		{
-			constructor (addr)
-			{
-				super(addr);
-			}
+		// class ObjectIndexed extends Base
+		// {
+		// 	constructor (addr)
+		// 	{
+		// 		super(addr);
+		// 	}
 
-			draw (renderer)
-			{
-				renderer.context.drawElements(this.topology);
-			}
-		};
+		// 	draw (renderer)
+		// 	{
+		// 		renderer.context.drawElements(this.topology);
+		// 	}
+		// };
 
-		this.ObjectIndexed = ObjectIndexed;
+		// this.ObjectIndexed = ObjectIndexed;
 
 
 

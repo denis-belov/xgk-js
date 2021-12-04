@@ -24,7 +24,7 @@ export default class Base
 		return this.instances[addr];
 	}
 
-	static getOriginalStruct (descriptor, offsets, wasm_wrapper_instance, addr)
+	static _getOriginalStruct (descriptor, offsets, wasm_wrapper_instance, addr)
 	{
 		const original_struct = {};
 
@@ -42,8 +42,24 @@ export default class Base
 		return original_struct;
 	}
 
+	static getOriginalStruct (addr)
+	{
+		const original_struct =
+			Base._getOriginalStruct
+			(
+				this.original_struct_descriptor,
+				this.original_struct_offsets,
+				wasm_wrapper,
+				addr,
+			);
+
+		return original_struct;
+	}
 
 
-	// constructor ()
-	// {}
+
+	constructor (addr)
+	{
+		this.addr = addr;
+	}
 }

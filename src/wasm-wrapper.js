@@ -17,12 +17,11 @@
  *
  *
  * TODO: determination capabiity of what wasm memory type is being used.
- * TODO: Rename SizeT to Size?
  */
 
 
 
- import Base from './base';
+//  import Base from './base';
 
 
 
@@ -50,49 +49,49 @@ export default class WasmWrapper
 
 	constructor ()
 	{
-		this.memory_views =
-		{
-			UI8: null,
-			UI32: null,
-			UI64: null,
-			F32: null,
-		};
+		this.memory_views = {};
 
 		this.Uniform = null;
+		this.UniformBlock = null;
+		this.DescriptorSet = null;
+		this.Material = null;
+		this.Object = null;
+		this.Scene = null;
 	}
 
-	Addr (addr, offset = 0)
+	Addr (addr)
 	{
-		return this.memory_views.UI32[(addr + (offset * WasmWrapper.PTR_SIZE)) / 4];
+		return this.memory_views.UI32[(addr) / 4];
 	}
 
-	Addrv (addr, length, offset = 0)
+	Addrv (addr, length)
 	{
-		const _addr = (addr + (offset * WasmWrapper.PTR_SIZE)) / 4;
+		const _addr = (addr) / 4;
 
 		return this.memory_views.UI32.subarray(_addr, _addr + length);
 	}
 
-	Uint32 (addr, offset = 0)
+	Uint32 (addr)
 	{
-		return this.memory_views.UI32[(addr + (offset * WasmWrapper.PTR_SIZE)) / 4];
+		return this.memory_views.UI32[(addr) / 4];
 	}
 
-	Uint32v (addr, length, offset = 0)
+	Uint32v (addr, length)
 	{
-		const _addr = (addr + (offset * WasmWrapper.PTR_SIZE)) / 4;
+		const _addr = (addr) / 4;
 
 		return this.memory_views.UI32.subarray(_addr, _addr + length);
 	}
 
-	Char (addr, offset = 0)
+	Char (addr)
 	{
-		return this.memory_views.UI8[addr + (offset * WasmWrapper.PTR_SIZE)];
+		return this.memory_views.UI8[addr];
 	}
 
-	CharvLen (addr, offset = 0)
+	// TODO: rename to CStringLen?
+	CharvLen (addr)
 	{
-		const _addr = addr + (offset * WasmWrapper.PTR_SIZE);
+		const _addr = addr;
 
 		for (let vend = 0; ; ++vend)
 		{
@@ -103,43 +102,44 @@ export default class WasmWrapper
 		}
 	}
 
-	Charv (addr, offset = 0)
+	// TODO: rename to CString?
+	Charv (addr)
 	{
 		return this.memory_views.UI8.subarray
-		(addr + (offset * WasmWrapper.PTR_SIZE), addr + (offset * WasmWrapper.PTR_SIZE) + this.CharvLen(addr, offset));
+		(addr, addr + this.CharvLen(addr, offset));
 	}
 
-	Charv2 (addr, length, offset = 0)
+	Charv2 (addr, length)
 	{
 		return this.memory_views.UI8.subarray
-		(addr + (offset * WasmWrapper.PTR_SIZE), addr + (offset * WasmWrapper.PTR_SIZE) + length);
+		(addr, addr + length);
 	}
 
-	SizeT (addr, offset = 0)
+	SizeT (addr)
 	{
-		return this.memory_views.UI32[(addr + (offset * WasmWrapper.PTR_SIZE)) / 4];
+		return this.memory_views.UI32[(addr) / 4];
 	}
 
-	SizeTv (addr, length, offset = 0)
+	SizeTv (addr, length)
 	{
-		const _addr = (addr + (offset * WasmWrapper.PTR_SIZE)) / 4;
+		const _addr = (addr) / 4;
 
 		return this.memory_views.UI32.subarray(_addr, _addr + length);
 	}
 
-	Float (addr, offset = 0)
+	Float (addr)
 	{
-		return this.memory_views.F32[(addr + (offset * WasmWrapper.PTR_SIZE)) / 4];
+		return this.memory_views.F32[(addr) / 4];
 	}
 
-	Floatv (addr, length, offset = 0)
+	Floatv (addr, length)
 	{
-		const _addr = (addr + (offset * WasmWrapper.PTR_SIZE)) / 4;
+		const _addr = (addr) / 4;
 
 		return this.memory_views.F32.subarray(_addr, _addr + length);
 	}
 
-	StdString (addr, offset = 0)
+	StdString (addr)
 	{
 		/**
 		 * 	These funcions must to be defined:
@@ -155,7 +155,7 @@ export default class WasmWrapper
 		 *	}
 		 */
 
-		const _addr = addr + (offset * WasmWrapper.PTR_SIZE);
+		const _addr = addr;
 
 		const result =
 			this.Charv2
@@ -182,9 +182,9 @@ export default class WasmWrapper
 	 *	}
 	 */
 
-	StdVectorUint32 (addr, offset = 0)
+	StdVectorUint32 (addr)
 	{
-		const _addr = addr + (offset * WasmWrapper.PTR_SIZE);
+		const _addr = addr;
 
 		const result =
 			this.Uint32v
@@ -197,9 +197,9 @@ export default class WasmWrapper
 		return result;
 	}
 
-	StdVectorFloat (addr, offset = 0)
+	StdVectorFloat (addr)
 	{
-		const _addr = addr + (offset * WasmWrapper.PTR_SIZE);
+		const _addr = addr;
 
 		const result =
 			this.Floatv
@@ -212,9 +212,9 @@ export default class WasmWrapper
 		return result;
 	}
 
-	StdVectorAddr (addr, offset = 0)
+	StdVectorAddr (addr)
 	{
-		const _addr = addr + (offset * WasmWrapper.PTR_SIZE);
+		const _addr = addr;
 
 		const result =
 			this.Addrv
@@ -381,6 +381,60 @@ export default class WasmWrapper
 
 		if (declareXgkApiClasses)
 		{
+			class Base
+			{
+				static instances = null;
+
+				static getInstance (addr)
+				{
+					if (!this.instances)
+					{
+						this.instances = {};
+					}
+
+					if (!this.instances[addr])
+					{
+						Object.defineProperty
+						(
+							this.instances,
+
+							addr,
+
+							{ value: new this(addr) },
+						)
+					}
+
+					return this.instances[addr];
+				}
+
+				static getOriginalStruct (addr)
+				{
+					const original_struct = {};
+
+					let member_index = 0;
+
+					for (const member_name in this.original_struct_descriptor)
+					{
+						const type = this.original_struct_descriptor[member_name];
+
+						original_struct[member_name] = wasm_wrapper[type](addr + this.original_struct_offsets[member_index]);
+
+						++member_index;
+					}
+
+					return original_struct;
+				}
+
+
+
+				constructor (addr)
+				{
+					this.addr = addr;
+				}
+			}
+
+
+
 			class Uniform extends Base
 			{
 				static original_struct_descriptor =
@@ -395,27 +449,11 @@ export default class WasmWrapper
 				static original_struct_offsets =
 					wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API15uniform_offsetsE, Object.keys(this.original_struct_descriptor).length);
 
-				static getOriginalStruct (addr)
-				{
-					const original_struct =
-						Base.getOriginalStruct
-						(
-							this.original_struct_descriptor,
-							this.original_struct_offsets,
-							wasm_wrapper,
-							addr,
-						);
-
-					return original_struct;
-				}
-
 
 
 				constructor (addr)
 				{
 					super(addr);
-
-					this.addr = addr;
 
 
 
@@ -451,27 +489,11 @@ export default class WasmWrapper
 				static original_struct_offsets =
 					wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API21uniform_block_offsetsE, Object.keys(this.original_struct_descriptor).length);
 
-				static getOriginalStruct (addr)
-				{
-					const original_struct =
-						Base.getOriginalStruct
-						(
-							this.original_struct_descriptor,
-							this.original_struct_offsets,
-							wasm_wrapper,
-							addr,
-						);
-
-					return original_struct;
-				}
-
 
 
 				constructor (addr)
 				{
 					super(addr);
-
-					this.addr = addr;
 
 
 
@@ -517,6 +539,32 @@ export default class WasmWrapper
 
 
 
+			class DescriptorSet extends Base
+			{
+				static original_struct_descriptor =
+				{
+					bindings: 'StdVectorAddr',
+				};
+
+				static original_struct_offsets =
+					wasm_wrapper.SizeTv(wasm_wrapper.exports.descriptor_set_offsets, Object.keys(this.original_struct_descriptor).length);
+
+
+
+				constructor (addr)
+				{
+					super(addr);
+
+
+
+					this.original_struct = DescriptorSet.getOriginalStruct(this.addr);
+				}
+			};
+
+			this.DescriptorSet = DescriptorSet;
+
+
+
 			class Material extends Base
 			{
 				static original_struct_descriptor =
@@ -540,27 +588,11 @@ export default class WasmWrapper
 
 				static used_instance = null;
 
-				static getOriginalStruct (addr)
-				{
-					const original_struct =
-						Base.getOriginalStruct
-						(
-							this.original_struct_descriptor,
-							this.original_struct_offsets,
-							wasm_wrapper,
-							addr,
-						);
-
-					return original_struct;
-				}
-
 
 
 				constructor (addr)
 				{
 					super(addr);
-
-					this.addr = addr;
 
 
 
@@ -585,12 +617,10 @@ export default class WasmWrapper
 				{
 					super(addr);
 
-					this.addr = addr;
 
 
-
-					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr, 0) / 3;
-					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr, 1) / 3;
+					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr) / 3;
+					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + 4) / 3;
 
 					this.vertex_data = wasm_wrapper.StdVectorFloat(addr, 2);
 				}
@@ -605,8 +635,6 @@ export default class WasmWrapper
 				constructor (addr)
 				{
 					super(addr);
-
-					this.addr = addr;
 
 
 
