@@ -34,7 +34,9 @@ export default class WebGLRenderer
 
 
 
-		class Uniform extends wasm.Uniform {};
+		class Uniform extends wasm.Uniform
+		{}
+
 		this.Uniform = Uniform;
 
 
@@ -77,7 +79,7 @@ export default class WebGLRenderer
 					gl.bufferSubData(gl.UNIFORM_BUFFER, uniform.block_index, uniform._data);
 				}
 			}
-		};
+		}
 
 		this.UniformBlock = UniformBlock;
 
@@ -86,14 +88,14 @@ export default class WebGLRenderer
 		class Material extends wasm.Material
 		{
 			static ENUM =
-			{
-				TOPOLOGY:
-				[
-					gl.TRIANGLES, // TRIANGLES
-					gl.POINTS, // POINTS
-					gl.LINES, // LINES
-				],
-			};
+				{
+					TOPOLOGY:
+					[
+						gl.TRIANGLES,
+						gl.POINTS,
+						gl.LINES,
+					],
+				};
 
 
 
@@ -244,7 +246,7 @@ export default class WebGLRenderer
 
 				this.uniforms_seq.forEach((uniform) => uniform.update());
 			}
-		};
+		}
 
 		this.Material = Material;
 
@@ -254,9 +256,10 @@ export default class WebGLRenderer
 		{
 			draw ()
 			{
-				gl.drawArrays(Material.used_instance.topology, this.scene_vertex_data_offset, this.scene_vertex_data_length);
+				gl.drawArrays
+				(Material.used_instance.topology, this.scene_vertex_data_offset, this.scene_vertex_data_length);
 			}
-		};
+		}
 
 		this.Object = _Object;
 
@@ -279,7 +282,9 @@ export default class WebGLRenderer
 
 
 
-		class Scene extends wasm.Scene {};
+		class Scene extends wasm.Scene
+		{}
+
 		this.Scene = Scene;
 	}
 

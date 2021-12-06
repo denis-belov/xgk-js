@@ -16,6 +16,11 @@
  *
  *
  *
+ * Passing argument by reference works as passing by pointer.
+ * So, functions with reference parameters expect address instead of value.
+ *
+ *
+ *
  * TODO: determination capabiity of what wasm memory type is being used.
  */
 
@@ -25,13 +30,19 @@
 
 
 
+const _4_BYTES = 4;
 const IDLE_FUNCTION = () => 0;
 
 
 
 export default class WasmWrapper
 {
+	// TODO: calculate these dinamically or get statically compiled?
+	/* eslint-disable no-magic-numbers */
 	static PTR_SIZE = 4;
+	static SIZE_T_SIZE = 4;
+	static FLOAT_SIZE = 4;
+	/* eslint-enable no-magic-numbers */
 
 	static text_decoder = new TextDecoder('utf-8');
 
@@ -61,24 +72,24 @@ export default class WasmWrapper
 
 	Addr (addr)
 	{
-		return this.memory_views.UI32[(addr) / 4];
+		return this.memory_views.UI32[addr / WasmWrapper.PTR_SIZE];
 	}
 
 	Addrv (addr, length)
 	{
-		const _addr = (addr) / 4;
+		const _addr = addr / WasmWrapper.PTR_SIZE;
 
 		return this.memory_views.UI32.subarray(_addr, _addr + length);
 	}
 
 	Uint32 (addr)
 	{
-		return this.memory_views.UI32[(addr) / 4];
+		return this.memory_views.UI32[addr / _4_BYTES];
 	}
 
 	Uint32v (addr, length)
 	{
-		const _addr = (addr) / 4;
+		const _addr = addr / _4_BYTES;
 
 		return this.memory_views.UI32.subarray(_addr, _addr + length);
 	}
@@ -106,7 +117,7 @@ export default class WasmWrapper
 	Charv (addr)
 	{
 		return this.memory_views.UI8.subarray
-		(addr, addr + this.CharvLen(addr, offset));
+		(addr, addr + this.CharvLen(addr));
 	}
 
 	Charv2 (addr, length)
@@ -117,24 +128,24 @@ export default class WasmWrapper
 
 	SizeT (addr)
 	{
-		return this.memory_views.UI32[(addr) / 4];
+		return this.memory_views.UI32[addr / WasmWrapper.SIZE_T_SIZE];
 	}
 
 	SizeTv (addr, length)
 	{
-		const _addr = (addr) / 4;
+		const _addr = addr / WasmWrapper.SIZE_T_SIZE;
 
 		return this.memory_views.UI32.subarray(_addr, _addr + length);
 	}
 
 	Float (addr)
 	{
-		return this.memory_views.F32[(addr) / 4];
+		return this.memory_views.F32[addr / WasmWrapper.FLOAT_SIZE];
 	}
 
 	Floatv (addr, length)
 	{
-		const _addr = (addr) / 4;
+		const _addr = addr / WasmWrapper.FLOAT_SIZE;
 
 		return this.memory_views.F32.subarray(_addr, _addr + length);
 	}
@@ -229,11 +240,12 @@ export default class WasmWrapper
 
 	async init (code, memory, declareXgkApiClasses = true, custom_imports)
 	{
+		/* eslint-disable consistent-this */
 		const wasm_wrapper = this;
 
 		const wasm_module = await WebAssembly.compile(code);
 
-		LOG(wasm_module)
+		LOG(wasm_module);
 
 		// this.module = wasm_module;
 
@@ -366,7 +378,7 @@ export default class WasmWrapper
 		this.exports = wasm_module_instance.exports;
 
 		// imported || exported
-		const { buffer } = memory || wasm_module_instance.exports.memory
+		const { buffer } = memory || wasm_module_instance.exports.memory;
 
 		this.memory_views.UI8 = new Uint8Array(buffer);
 		this.memory_views.I8 = new Int8Array(buffer);
@@ -401,7 +413,7 @@ export default class WasmWrapper
 							addr,
 
 							{ value: new this(addr) },
-						)
+						);
 					}
 
 					return this.instances[addr];
@@ -417,7 +429,8 @@ export default class WasmWrapper
 					{
 						const type = this.original_struct_descriptor[member_name];
 
-						original_struct[member_name] = wasm_wrapper[type](addr + this.original_struct_offsets[member_index]);
+						original_struct[member_name] =
+							wasm_wrapper[type](addr + this.original_struct_offsets[member_index]);
 
 						++member_index;
 					}
@@ -438,16 +451,20 @@ export default class WasmWrapper
 			class Uniform extends Base
 			{
 				static original_struct_descriptor =
-				{
-					object_addr: 'Addr',
-					name: 'StdString',
-					// TODO: rename to offset
-					block_index: 'SizeT',
-					size: 'SizeT',
-				};
+					{
+						object_addr: 'Addr',
+						name: 'StdString',
+						// TODO: rename to offset
+						block_index: 'SizeT',
+						size: 'SizeT',
+					};
 
 				static original_struct_offsets =
-					wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API15uniform_offsetsE, Object.keys(this.original_struct_descriptor).length);
+					wasm_wrapper.SizeTv
+					(
+						wasm_wrapper.exports._ZN3XGK3API15uniform_offsetsE,
+						Object.keys(this.original_struct_descriptor).length,
+					);
 
 
 
@@ -479,15 +496,19 @@ export default class WasmWrapper
 			class UniformBlock extends Base
 			{
 				static original_struct_descriptor =
-				{
-					binding: 'SizeT',
-					type: 'SizeT',
-					name: 'StdString',
-					uniforms: 'StdVectorAddr',
-				};
+					{
+						binding: 'SizeT',
+						type: 'SizeT',
+						name: 'StdString',
+						uniforms: 'StdVectorAddr',
+					};
 
 				static original_struct_offsets =
-					wasm_wrapper.SizeTv(wasm_wrapper.exports._ZN3XGK3API21uniform_block_offsetsE, Object.keys(this.original_struct_descriptor).length);
+					wasm_wrapper.SizeTv
+					(
+						wasm_wrapper.exports._ZN3XGK3API21uniform_block_offsetsE,
+						Object.keys(this.original_struct_descriptor).length,
+					);
 
 
 
@@ -533,7 +554,7 @@ export default class WasmWrapper
 							},
 						);
 				}
-			};
+			}
 
 			this.UniformBlock = UniformBlock;
 
@@ -542,12 +563,16 @@ export default class WasmWrapper
 			class DescriptorSet extends Base
 			{
 				static original_struct_descriptor =
-				{
-					bindings: 'StdVectorAddr',
-				};
+					{
+						bindings: 'StdVectorAddr',
+					};
 
 				static original_struct_offsets =
-					wasm_wrapper.SizeTv(wasm_wrapper.exports.descriptor_set_offsets, Object.keys(this.original_struct_descriptor).length);
+					wasm_wrapper.SizeTv
+					(
+						wasm_wrapper.exports._ZN3XGK3API22descriptor_set_offsetsE,
+						Object.keys(this.original_struct_descriptor).length,
+					);
 
 
 
@@ -559,7 +584,7 @@ export default class WasmWrapper
 
 					this.original_struct = DescriptorSet.getOriginalStruct(this.addr);
 				}
-			};
+			}
 
 			this.DescriptorSet = DescriptorSet;
 
@@ -568,23 +593,29 @@ export default class WasmWrapper
 			class Material extends Base
 			{
 				static original_struct_descriptor =
-				{
-					topology: 'SizeT',
-					glsl100es_code_vertex: 'StdString',
-					glsl100es_code_fragment: 'StdString',
-					glsl300es_code_vertex: 'StdString',
-					glsl300es_code_fragment: 'StdString',
-					spirv_code_vertex: 'StdVectorUint32',
-					spirv_code_fragment: 'StdVectorUint32',
-					wgsl_code_vertex: 'StdString',
-					wgsl_code_fragment: 'StdString',
-					uniforms: 'StdVectorAddr',
-					uniform_blocks: 'StdVectorAddr',
-					descriptor_sets: 'StdVectorAddr'
-				};
+					{
+						topology: 'SizeT',
+						glsl100es_code_vertex: 'StdString',
+						glsl100es_code_fragment: 'StdString',
+						glsl300es_code_vertex: 'StdString',
+						glsl300es_code_fragment: 'StdString',
+						glsl450_code_vertex: 'StdString',
+						glsl450_code_fragment: 'StdString',
+						spirv_code_vertex: 'StdVectorUint32',
+						spirv_code_fragment: 'StdVectorUint32',
+						wgsl_code_vertex: 'StdString',
+						wgsl_code_fragment: 'StdString',
+						uniforms: 'StdVectorAddr',
+						uniform_blocks: 'StdVectorAddr',
+						descriptor_sets: 'StdVectorAddr',
+					};
 
 				static original_struct_offsets =
-					wasm_wrapper.SizeTv(wasm_wrapper.exports.material_offsets, Object.keys(this.original_struct_descriptor).length);
+					wasm_wrapper.SizeTv
+					(
+						wasm_wrapper.exports._ZN3XGK3API16material_offsetsE,
+						Object.keys(this.original_struct_descriptor).length,
+					);
 
 				static used_instance = null;
 
@@ -605,7 +636,7 @@ export default class WasmWrapper
 				{
 					this.topology = renderer.Material.ENUM.TOPOLOGY[this.original_struct.topology];
 				}
-			};
+			}
 
 			this.Material = Material;
 
@@ -619,12 +650,15 @@ export default class WasmWrapper
 
 
 
+					// TODO: devide by 3 in C++
+					/* eslint-disable no-magic-numbers */
 					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr) / 3;
-					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + 4) / 3;
+					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE) / 3;
+					/* eslint-enable no-magic-numbers */
 
 					this.vertex_data = wasm_wrapper.StdVectorFloat(addr, 2);
 				}
-			};
+			}
 
 			this.Object = _Object;
 
@@ -640,7 +674,7 @@ export default class WasmWrapper
 
 					this.vertex_data = wasm_wrapper.StdVectorFloat(addr);
 				}
-			};
+			}
 
 			this.Scene = Scene;
 		}

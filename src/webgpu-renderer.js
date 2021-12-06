@@ -1,3 +1,5 @@
+// import glslang from '@webgpu/glslang-web/dist/glslang.js';
+
 // import Base from './base';
 
 
@@ -32,7 +34,13 @@ export default class WebGPURenderer
 
 
 
-		class Uniform extends wasm.Uniform {};
+		this.glslang = null;
+
+
+
+		class Uniform extends wasm.Uniform
+		{}
+
 		this.Uniform = Uniform;
 
 
@@ -100,10 +108,11 @@ export default class WebGPURenderer
 				{
 					const uniform = this.uniforms_seq[uniform_index];
 
-					renderer.device.queue.writeBuffer(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
+					renderer.device.queue.writeBuffer
+					(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
 				}
 			}
-		};
+		}
 
 		this.UniformBlock = UniformBlock;
 
@@ -113,12 +122,12 @@ export default class WebGPURenderer
 		class DescriptorSet extends wasm.DescriptorSet
 		{
 			static ENUM =
-			{
-				BINDING_TYPE:
 				{
-					UNIFORM_BUFFER: 0,
-				},
-			};
+					BINDING_TYPE:
+					{
+						UNIFORM_BUFFER: 0,
+					},
+				};
 
 
 
@@ -181,7 +190,7 @@ export default class WebGPURenderer
 				// use for loop
 				this.binding_seq.forEach((binding) => binding.use());
 			}
-		};
+		}
 
 		this.DescriptorSet = DescriptorSet;
 
@@ -190,16 +199,16 @@ export default class WebGPURenderer
 		class Material extends wasm.Material
 		{
 			static ENUM =
-			{
-				TOPOLOGY:
-				[
-					'triangle-list', // TRIANGLES
-					'point-list', // POINTS
-					'line-list', // LINES
-					"triangle-strip",
-					"line-strip",
-				],
-			};
+				{
+					TOPOLOGY:
+					[
+						'triangle-list',
+						'point-list',
+						'line-list',
+						'triangle-strip',
+						'line-strip',
+					],
+				};
 
 
 
@@ -270,8 +279,8 @@ export default class WebGPURenderer
 
 
 				{
-					// const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_vertex);
-					const code = new Uint32Array(this.original_struct.spirv_code_vertex);
+					const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_vertex);
+					// const code = new Uint32Array(this.original_struct.spirv_code_vertex);
 
 					const shader_module = renderer.device.createShaderModule({ code });
 
@@ -281,8 +290,8 @@ export default class WebGPURenderer
 
 
 				{
-					// const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_fragment);
-					const code = new Uint32Array(this.original_struct.spirv_code_fragment);
+					const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_fragment);
+					// const code = new Uint32Array(this.original_struct.spirv_code_fragment);
 
 					const shader_module = renderer.device.createShaderModule({ code });
 
@@ -326,7 +335,7 @@ export default class WebGPURenderer
 
 				renderer.render_pass_encoder.setPipeline(this.pipeline);
 			}
-		};
+		}
 
 		this.Material = Material;
 
@@ -338,19 +347,21 @@ export default class WebGPURenderer
 			{
 				renderer.render_pass_encoder.draw(this.scene_vertex_data_length, 1, this.scene_vertex_data_offset, 0);
 			}
-		};
+		}
 
 		this.Object = _Object;
 
 
 
-		class Scene extends wasm.Scene {};
+		class Scene extends wasm.Scene
+		{}
+
 		this.Scene = Scene;
 	}
 
 	async init ()
 	{
-		// LOG(await glslang())
+		// this.glslang = await glslang();
 
 		this.adapter = await navigator.gpu.requestAdapter();
 
