@@ -397,6 +397,7 @@ export default class WasmWrapper
 			{
 				static instances = null;
 
+				// Replace by new?
 				static getInstance (addr)
 				{
 					if (!this.instances)
@@ -583,6 +584,8 @@ export default class WasmWrapper
 
 
 					this.original_struct = DescriptorSet.getOriginalStruct(this.addr);
+
+					// this.uniform_blocks
 				}
 			}
 
@@ -630,6 +633,9 @@ export default class WasmWrapper
 					this.original_struct = Material.getOriginalStruct(this.addr);
 
 					this.topology = null;
+
+					// this.uniforms
+					// this.uniform_blocks
 				}
 
 				getTopology (renderer)

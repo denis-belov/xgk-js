@@ -35,7 +35,19 @@ export default class WebGLRenderer
 
 
 		class Uniform extends wasm.Uniform
-		{}
+		{
+			constructor (addr)
+			{
+				super(addr);
+
+
+
+				this.location = null;
+
+				// TODO: add multiple typed data initializers.
+				this.typed_data = wasm.Floatv(this.object_addr, this.size / 4);
+			}
+		}
 
 		this.Uniform = Uniform;
 
@@ -60,7 +72,7 @@ export default class WebGLRenderer
 				// Initially update uniforms.
 				this.use();
 
-				gl.bindBuffer(gl.UNIFORM_BUFFER, null);
+				// gl.bindBuffer(gl.UNIFORM_BUFFER, null);
 			}
 
 			use ()
@@ -182,7 +194,7 @@ export default class WebGLRenderer
 
 
 
-				gl.useProgram(this.program);
+				// gl.useProgram(this.program);
 
 				this.uniforms_seq =
 					// TypedArray::map returns TypedArray, but need Array.
@@ -191,7 +203,7 @@ export default class WebGLRenderer
 						(
 							(uniform_addr) =>
 							{
-								const uniform = new Uniform(uniform_addr);
+								const uniform = Uniform.getInstance(uniform_addr);
 
 								uniform.location = gl.getUniformLocation(this.program, uniform.name);
 
@@ -203,7 +215,7 @@ export default class WebGLRenderer
 										gl.uniformMatrix4fv(uniform.location, false, uniform.typed_data);
 									};
 
-									uniform.update();
+									// uniform.update();
 
 									this.uniform_dict[uniform.name] = uniform;
 
@@ -215,7 +227,7 @@ export default class WebGLRenderer
 						)
 						.filter((uniform) => uniform);
 
-				gl.useProgram(null);
+				// gl.useProgram(null);
 
 
 
@@ -236,6 +248,11 @@ export default class WebGLRenderer
 						},
 					);
 				}
+
+
+
+				// Initially update uniforms.
+				this.use();
 			}
 
 			use ()
