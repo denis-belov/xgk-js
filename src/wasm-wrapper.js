@@ -658,8 +658,8 @@ export default class WasmWrapper
 
 					// TODO: devide by 3 in C++
 					/* eslint-disable no-magic-numbers */
-					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr) / 3;
-					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE) / 3;
+					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr);
+					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE);
 					/* eslint-enable no-magic-numbers */
 
 					this.vertex_data = wasm_wrapper.StdVectorFloat(addr, 2);
