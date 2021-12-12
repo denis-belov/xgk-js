@@ -449,6 +449,40 @@ export default class WasmWrapper
 
 
 
+			class Renderer extends Base
+			{
+				static original_struct_descriptor =
+					{
+						width: 'SizeT',
+						height: 'SizeT',
+					};
+
+				static original_struct_offsets =
+					wasm_wrapper.SizeTv
+					(
+						wasm_wrapper.exports._ZN3XGK3API16renderer_offsetsE,
+						Object.keys(this.original_struct_descriptor).length,
+					);
+
+
+
+				constructor (addr)
+				{
+					super(addr);
+
+
+
+					this.original_struct = Renderer.getOriginalStruct(this.addr);
+
+					this.width = this.original_struct.width;
+					this.height = this.original_struct.height;
+				}
+			}
+
+			this.Renderer = Renderer;
+
+
+
 			class Uniform extends Base
 			{
 				static original_struct_descriptor =
