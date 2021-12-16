@@ -160,7 +160,7 @@ export default class WasmWrapper
 		 *		return s.data();
 		 *	}
 		 *
-		 *	extern "C" std::size_t getStdStringSize (std::string& s)
+		 *	extern "C" size_t getStdStringSize (std::string& s)
 		 *	{
 		 *		return s.size();
 		 *	}
@@ -187,7 +187,7 @@ export default class WasmWrapper
 	 *		return v.data();
 	 *	}
 	 *
-	 *	extern "C" std::size_t getStdVectorSize (std::vector<int>& v)
+	 *	extern "C" size_t getStdVectorSize (std::vector<int>& v)
 	 *	{
 	 *		return v.size();
 	 *	}
