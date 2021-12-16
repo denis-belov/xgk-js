@@ -674,7 +674,7 @@ export default class WasmWrapper
 
 				getTopology (renderer)
 				{
-					this.topology = renderer.Material.ENUM.TOPOLOGY[this.original_struct.topology];
+					this.topology = renderer.Material.TOPOLOGY[this.original_struct.topology];
 				}
 			}
 

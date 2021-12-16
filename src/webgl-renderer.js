@@ -105,15 +105,12 @@ export default class WebGL
 
 				class Material extends wasm.Material
 				{
-					static ENUM =
-						{
-							TOPOLOGY:
-							[
-								gl.TRIANGLES,
-								gl.POINTS,
-								gl.LINES,
-							],
-						};
+					static TOPOLOGY =
+						[
+							gl.TRIANGLES,
+							gl.POINTS,
+							gl.LINES,
+						];
 
 
 
