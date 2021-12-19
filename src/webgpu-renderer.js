@@ -130,12 +130,9 @@ export default class WebGPU
 				// Descriptor set is a bind group in vulkan terms.
 				class DescriptorSet extends wasm.DescriptorSet
 				{
-					static ENUM =
+					static BINDING_TYPE =
 						{
-							BINDING_TYPE:
-							{
-								UNIFORM_BUFFER: 0,
-							},
+							UNIFORM_BUFFER: 0,
 						};
 
 
@@ -207,17 +204,14 @@ export default class WebGPU
 
 				class Material extends wasm.Material
 				{
-					static ENUM =
-						{
-							TOPOLOGY:
-							[
-								'triangle-list',
-								'point-list',
-								'line-list',
-								'triangle-strip',
-								'line-strip',
-							],
-						};
+					static TOPOLOGY =
+						[
+							'triangle-list',
+							'point-list',
+							'line-list',
+							'triangle-strip',
+							'line-strip',
+						];
 
 
 
