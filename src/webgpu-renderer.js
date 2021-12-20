@@ -71,10 +71,14 @@ export default class WebGPU
 
 								usage:
 								(
-									window.GPUBufferUsage.COPY_DST |
-									window.GPUBufferUsage.UNIFORM
+									// window.GPUBufferUsage.COPY_DST |
+									window.GPUBufferUsage.UNIFORM |
+									// window.GPUBufferUsage.COPY_SRC |
+									window.GPUBufferUsage.MAP_WRITE
 								),
 							});
+
+						this.buffer.mapAsync(window.GPUMapMode.WRITE);
 
 						this.entry =
 						{
@@ -88,6 +92,7 @@ export default class WebGPU
 							},
 						};
 
+						// rename to layout
 						this.entry_layout =
 						{
 							binding: this.binding,
@@ -103,6 +108,8 @@ export default class WebGPU
 							},
 						};
 
+
+
 						this.use();
 					}
 
@@ -117,6 +124,9 @@ export default class WebGPU
 						{
 							const uniform = this.uniforms_seq[uniform_index];
 
+							// This is analog for vkCmdUpdateBuffer.
+							// So it is recommended for updating small amounts of data.
+							// May be keep biffer mapped and apdate data with TypedArray.set?
 							renderer.device.queue.writeBuffer
 							(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
 						}
@@ -187,6 +197,10 @@ export default class WebGPU
 
 						this.bind_group =
 							renderer.device.createBindGroup(this.bind_group_descriptor);
+
+
+
+						// use();
 					}
 
 					use (bind_group_index)
