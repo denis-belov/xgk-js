@@ -64,6 +64,8 @@ export default class WebGPU
 
 						this.getUniforms(renderer);
 
+						LOG(this)
+
 						this.buffer =
 							renderer.device.createBuffer
 							({
@@ -71,14 +73,14 @@ export default class WebGPU
 
 								usage:
 								(
-									// window.GPUBufferUsage.COPY_DST |
-									window.GPUBufferUsage.UNIFORM |
+									window.GPUBufferUsage.COPY_DST |
+									window.GPUBufferUsage.UNIFORM
 									// window.GPUBufferUsage.COPY_SRC |
-									window.GPUBufferUsage.MAP_WRITE
+									// window.GPUBufferUsage.MAP_WRITE
 								),
 							});
 
-						this.buffer.mapAsync(window.GPUMapMode.WRITE);
+						// this.buffer.mapAsync(window.GPUMapMode.WRITE);
 
 						this.entry =
 						{
@@ -126,7 +128,7 @@ export default class WebGPU
 
 							// This is analog for vkCmdUpdateBuffer.
 							// So it is recommended for updating small amounts of data.
-							// May be keep biffer mapped and apdate data with TypedArray.set?
+							// May be keep buffer mapped and apdate data with TypedArray.set?
 							renderer.device.queue.writeBuffer
 							(this.buffer, uniform.block_index, uniform._data, 0, uniform._data.length);
 						}
@@ -227,9 +229,16 @@ export default class WebGPU
 							'line-strip',
 						];
 
+					static ShaderUsage =
+						{
+							SPIRV: 0,
+							GLSL_VULKAN: 1,
+							WGSL: 2,
+						};
 
 
-					constructor (addr)
+
+					constructor (addr, shader_usage = Material.ShaderUsage.WGSL)
 					{
 						super(addr);
 
@@ -295,24 +304,73 @@ export default class WebGPU
 
 
 
+						switch (shader_usage)
 						{
-							const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_vertex);
-							// const code = new Uint32Array(this.original_struct.spirv_code_vertex);
+							case Material.ShaderUsage.SPIRV:
+							{
+								{
+									const code = new Uint32Array(this.original_struct.spirv_code_vertex);
 
-							const shader_module = renderer.device.createShaderModule({ code });
+									const shader_module = renderer.device.createShaderModule({ code });
 
-							pipeline_configuration.vertex.module = shader_module;
-						}
+									pipeline_configuration.vertex.module = shader_module;
+								}
 
+								{
+									const code = new Uint32Array(this.original_struct.spirv_code_fragment);
 
+									const shader_module = renderer.device.createShaderModule({ code });
 
-						{
-							const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_fragment);
-							// const code = new Uint32Array(this.original_struct.spirv_code_fragment);
+									pipeline_configuration.fragment.module = shader_module;
+								}
 
-							const shader_module = renderer.device.createShaderModule({ code });
+								break;
+							}
 
-							pipeline_configuration.fragment.module = shader_module;
+							case Material.ShaderUsage.GLSL_VULKAN:
+							{
+								// TODO: use glslang.js
+								// {
+								// 	const code = new Uint32Array(this.original_struct.spirv_code_vertex);
+
+								// 	const shader_module = renderer.device.createShaderModule({ code });
+
+								// 	pipeline_configuration.vertex.module = shader_module;
+								// }
+
+								// {
+								// 	const code = new Uint32Array(this.original_struct.spirv_code_fragment);
+
+								// 	const shader_module = renderer.device.createShaderModule({ code });
+
+								// 	pipeline_configuration.fragment.module = shader_module;
+								// }
+
+								break;
+							}
+
+							case Material.ShaderUsage.WGSL:
+							{
+								{
+									const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_vertex);
+
+									const shader_module = renderer.device.createShaderModule({ code });
+
+									pipeline_configuration.vertex.module = shader_module;
+								}
+
+								{
+									const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_fragment);
+
+									const shader_module = renderer.device.createShaderModule({ code });
+
+									pipeline_configuration.fragment.module = shader_module;
+								}
+
+								break;
+							}
+
+							default:
 						}
 
 

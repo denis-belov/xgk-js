@@ -212,6 +212,8 @@ export default class WasmWrapper
 	{
 		const _addr = addr;
 
+		LOG(this.exports.getStdVectorData(_addr))
+
 		const result =
 			this.Floatv
 			(
@@ -690,13 +692,10 @@ export default class WasmWrapper
 
 
 
-					// TODO: devide by 3 in C++
-					/* eslint-disable no-magic-numbers */
-					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr);
-					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE);
-					/* eslint-enable no-magic-numbers */
-
-					this.vertex_data = wasm_wrapper.StdVectorFloat(addr, 2);
+					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE * 2);
+					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE * 3);
+					this.vertex_data = wasm_wrapper.StdVectorFloat(addr + WasmWrapper.PTR_SIZE * 4);
+					LOG(this.vertex_data)
 				}
 			}
 
@@ -712,7 +711,7 @@ export default class WasmWrapper
 
 
 
-					this.vertex_data = wasm_wrapper.StdVectorFloat(addr);
+					this.vertex_data = wasm_wrapper.StdVectorFloat(addr + WasmWrapper.PTR_SIZE * 2);
 				}
 			}
 
