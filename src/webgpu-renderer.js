@@ -1,4 +1,4 @@
-// import glslang from '@webgpu/glslang-web/dist/glslang.js';
+import glslang from '@webgpu/glslang/dist/web-devel-onefile/glslang.js';
 
 // import Base from './base';
 
@@ -329,22 +329,21 @@ export default class WebGPU
 
 							case Material.ShaderUsage.GLSL_VULKAN:
 							{
-								// TODO: use glslang.js
-								// {
-								// 	const code = new Uint32Array(this.original_struct.spirv_code_vertex);
+								{
+									const code = renderer.glslang.compileGLSL(WasmWrapper.uint8Array2DomString(this.original_struct.glsl_vulkan_code_vertex), 'vertex');
 
-								// 	const shader_module = renderer.device.createShaderModule({ code });
+									const shader_module = renderer.device.createShaderModule({ code });
 
-								// 	pipeline_configuration.vertex.module = shader_module;
-								// }
+									pipeline_configuration.vertex.module = shader_module;
+								}
 
-								// {
-								// 	const code = new Uint32Array(this.original_struct.spirv_code_fragment);
+								{
+									const code = renderer.glslang.compileGLSL(WasmWrapper.uint8Array2DomString(this.original_struct.glsl_vulkan_code_fragment), 'fragment');
 
-								// 	const shader_module = renderer.device.createShaderModule({ code });
+									const shader_module = renderer.device.createShaderModule({ code });
 
-								// 	pipeline_configuration.fragment.module = shader_module;
-								// }
+									pipeline_configuration.fragment.module = shader_module;
+								}
 
 								break;
 							}
@@ -438,7 +437,9 @@ export default class WebGPU
 
 			async init ()
 			{
-				// this.glslang = await glslang();
+				this.glslang = await glslang();
+
+				LOG(this.glslang)
 
 				this.adapter = await navigator.gpu.requestAdapter();
 

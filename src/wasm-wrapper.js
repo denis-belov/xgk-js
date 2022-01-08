@@ -415,7 +415,7 @@ export default class WasmWrapper
 
 							addr,
 
-							{ value: new this(addr) },
+							{ value: new this(...arguments) },
 						);
 					}
 
@@ -638,10 +638,10 @@ export default class WasmWrapper
 						glsl100es_code_fragment: 'StdString',
 						glsl300es_code_vertex: 'StdString',
 						glsl300es_code_fragment: 'StdString',
-						glsl450_code_vertex: 'StdString',
-						glsl450_code_fragment: 'StdString',
 						spirv_code_vertex: 'StdVectorUint32',
 						spirv_code_fragment: 'StdVectorUint32',
+						glsl_vulkan_code_vertex: 'StdString',
+						glsl_vulkan_code_fragment: 'StdString',
 						wgsl_code_vertex: 'StdString',
 						wgsl_code_fragment: 'StdString',
 						uniforms: 'StdVectorAddr',

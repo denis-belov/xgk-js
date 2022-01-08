@@ -11,13 +11,14 @@ export default class Base
 
 		if (!this.instances[addr])
 		{
+			LOG(arguments)
 			Object.defineProperty
 			(
 				this.instances,
 
 				addr,
 
-				{ value: new this(addr) },
+				{ value: new this(arguments) },
 			)
 		}
 
