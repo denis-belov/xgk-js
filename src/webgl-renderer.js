@@ -112,6 +112,12 @@ export default class WebGL
 							gl.LINES,
 						];
 
+					static FRONT_FACE =
+						[
+							gl.CCW,
+							gl.CW,
+						];
+
 
 
 					constructor (addr)
@@ -122,8 +128,6 @@ export default class WebGL
 
 						this.uniforms_seq = null;
 						this.uniforms_dict = {};
-
-						this.getTopology(renderer);
 
 
 
@@ -268,6 +272,7 @@ export default class WebGL
 					{
 						Material.used_instance = this;
 
+						gl.frontFace(this.front_face);
 						gl.useProgram(this.program);
 
 						this.uniforms_seq.forEach((uniform) => uniform.update());

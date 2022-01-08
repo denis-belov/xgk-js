@@ -1,7 +1,5 @@
 import glslang from '@webgpu/glslang/dist/web-devel-onefile/glslang.js';
 
-// import Base from './base';
-
 
 
 export default class WebGPU
@@ -63,8 +61,6 @@ export default class WebGPU
 
 
 						this.getUniforms(renderer);
-
-						LOG(this)
 
 						this.buffer =
 							renderer.device.createBuffer
@@ -229,6 +225,12 @@ export default class WebGPU
 							'line-strip',
 						];
 
+					static FRONT_FACE =
+						[
+							'ccw',
+							'cw',
+						];
+
 					static ShaderUsage =
 						{
 							SPIRV: 0,
@@ -241,10 +243,6 @@ export default class WebGPU
 					constructor (addr, shader_usage = Material.ShaderUsage.WGSL)
 					{
 						super(addr);
-
-
-
-						this.getTopology(renderer);
 
 
 
@@ -282,7 +280,7 @@ export default class WebGPU
 
 							primitive:
 							{
-								frontFace: 'cw',
+								frontFace: this.front_face,
 								topology: this.topology,
 							},
 
@@ -306,70 +304,76 @@ export default class WebGPU
 
 						switch (shader_usage)
 						{
-							case Material.ShaderUsage.SPIRV:
+						case Material.ShaderUsage.SPIRV:
+						{
 							{
-								{
-									const code = new Uint32Array(this.original_struct.spirv_code_vertex);
+								const code = new Uint32Array(this.original_struct.spirv_code_vertex);
 
-									const shader_module = renderer.device.createShaderModule({ code });
+								const shader_module = renderer.device.createShaderModule({ code });
 
-									pipeline_configuration.vertex.module = shader_module;
-								}
-
-								{
-									const code = new Uint32Array(this.original_struct.spirv_code_fragment);
-
-									const shader_module = renderer.device.createShaderModule({ code });
-
-									pipeline_configuration.fragment.module = shader_module;
-								}
-
-								break;
+								pipeline_configuration.vertex.module = shader_module;
 							}
 
-							case Material.ShaderUsage.GLSL_VULKAN:
 							{
-								{
-									const code = renderer.glslang.compileGLSL(WasmWrapper.uint8Array2DomString(this.original_struct.glsl_vulkan_code_vertex), 'vertex');
+								const code = new Uint32Array(this.original_struct.spirv_code_fragment);
 
-									const shader_module = renderer.device.createShaderModule({ code });
+								const shader_module = renderer.device.createShaderModule({ code });
 
-									pipeline_configuration.vertex.module = shader_module;
-								}
-
-								{
-									const code = renderer.glslang.compileGLSL(WasmWrapper.uint8Array2DomString(this.original_struct.glsl_vulkan_code_fragment), 'fragment');
-
-									const shader_module = renderer.device.createShaderModule({ code });
-
-									pipeline_configuration.fragment.module = shader_module;
-								}
-
-								break;
+								pipeline_configuration.fragment.module = shader_module;
 							}
 
-							case Material.ShaderUsage.WGSL:
+							break;
+						}
+
+						case Material.ShaderUsage.GLSL_VULKAN:
+						{
 							{
-								{
-									const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_vertex);
+								const code_glsl =
+									WasmWrapper.uint8Array2DomString(this.original_struct.glsl_vulkan_code_vertex);
 
-									const shader_module = renderer.device.createShaderModule({ code });
+								const code = renderer.glslang.compileGLSL(code_glsl, 'vertex');
 
-									pipeline_configuration.vertex.module = shader_module;
-								}
+								const shader_module = renderer.device.createShaderModule({ code });
 
-								{
-									const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_fragment);
-
-									const shader_module = renderer.device.createShaderModule({ code });
-
-									pipeline_configuration.fragment.module = shader_module;
-								}
-
-								break;
+								pipeline_configuration.vertex.module = shader_module;
 							}
 
-							default:
+							{
+								const code_glsl =
+									WasmWrapper.uint8Array2DomString(this.original_struct.glsl_vulkan_code_fragment);
+
+								const code = renderer.glslang.compileGLSL(code_glsl, 'fragment');
+
+								const shader_module = renderer.device.createShaderModule({ code });
+
+								pipeline_configuration.fragment.module = shader_module;
+							}
+
+							break;
+						}
+
+						case Material.ShaderUsage.WGSL:
+						{
+							{
+								const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_vertex);
+
+								const shader_module = renderer.device.createShaderModule({ code });
+
+								pipeline_configuration.vertex.module = shader_module;
+							}
+
+							{
+								const code = WasmWrapper.uint8Array2DomString(this.original_struct.wgsl_code_fragment);
+
+								const shader_module = renderer.device.createShaderModule({ code });
+
+								pipeline_configuration.fragment.module = shader_module;
+							}
+
+							break;
+						}
+
+						default:
 						}
 
 
@@ -439,8 +443,6 @@ export default class WebGPU
 			{
 				this.glslang = await glslang();
 
-				LOG(this.glslang)
-
 				this.adapter = await navigator.gpu.requestAdapter();
 
 				this.device = await this.adapter.requestDevice();
@@ -449,8 +451,6 @@ export default class WebGPU
 				{
 					this.render_format = this._context.getPreferredFormat(this.adapter);
 				}
-
-				LOG(this.original_struct);
 
 				this._context.configure
 				({

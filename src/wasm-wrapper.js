@@ -212,8 +212,6 @@ export default class WasmWrapper
 	{
 		const _addr = addr;
 
-		LOG(this.exports.getStdVectorData(_addr))
-
 		const result =
 			this.Floatv
 			(
@@ -400,7 +398,7 @@ export default class WasmWrapper
 				static instances = null;
 
 				// Replace by new?
-				static getInstance (addr)
+				static getInstance (addr, ...args)
 				{
 					if (!this.instances)
 					{
@@ -415,7 +413,7 @@ export default class WasmWrapper
 
 							addr,
 
-							{ value: new this(...arguments) },
+							{ value: new this(addr, ...args) },
 						);
 					}
 
@@ -634,16 +632,19 @@ export default class WasmWrapper
 				static original_struct_descriptor =
 					{
 						topology: 'SizeT',
+						front_face: 'SizeT',
 						glsl100es_code_vertex: 'StdString',
 						glsl100es_code_fragment: 'StdString',
 						glsl300es_code_vertex: 'StdString',
 						glsl300es_code_fragment: 'StdString',
-						spirv_code_vertex: 'StdVectorUint32',
-						spirv_code_fragment: 'StdVectorUint32',
+						glsl4_code_vertex: 'StdString',
+						glsl4_code_fragment: 'StdString',
 						glsl_vulkan_code_vertex: 'StdString',
 						glsl_vulkan_code_fragment: 'StdString',
 						wgsl_code_vertex: 'StdString',
 						wgsl_code_fragment: 'StdString',
+						spirv_code_vertex: 'StdVectorUint32',
+						spirv_code_fragment: 'StdVectorUint32',
 						uniforms: 'StdVectorAddr',
 						uniform_blocks: 'StdVectorAddr',
 						descriptor_sets: 'StdVectorAddr',
@@ -668,15 +669,13 @@ export default class WasmWrapper
 
 					this.original_struct = Material.getOriginalStruct(this.addr);
 
-					this.topology = null;
+
+
+					this.topology = this.constructor.TOPOLOGY[this.original_struct.topology];
+					this.front_face = this.constructor.FRONT_FACE[this.original_struct.front_face];
 
 					// this.uniforms
 					// this.uniform_blocks
-				}
-
-				getTopology (renderer)
-				{
-					this.topology = renderer.Material.TOPOLOGY[this.original_struct.topology];
 				}
 			}
 
@@ -692,10 +691,9 @@ export default class WasmWrapper
 
 
 
-					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE * 2);
-					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + WasmWrapper.PTR_SIZE * 3);
-					this.vertex_data = wasm_wrapper.StdVectorFloat(addr + WasmWrapper.PTR_SIZE * 4);
-					LOG(this.vertex_data)
+					this.scene_vertex_data_offset = wasm_wrapper.SizeT(addr + (WasmWrapper.PTR_SIZE * 2));
+					this.scene_vertex_data_length = wasm_wrapper.SizeT(addr + (WasmWrapper.PTR_SIZE * 3));
+					this.vertex_data = wasm_wrapper.StdVectorFloat(addr + (WasmWrapper.PTR_SIZE * 4));
 				}
 			}
 
@@ -711,7 +709,7 @@ export default class WasmWrapper
 
 
 
-					this.vertex_data = wasm_wrapper.StdVectorFloat(addr + WasmWrapper.PTR_SIZE * 2);
+					this.vertex_data = wasm_wrapper.StdVectorFloat(addr + (WasmWrapper.PTR_SIZE * 2));
 				}
 			}
 
